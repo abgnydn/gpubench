@@ -10,47 +10,65 @@ export async function GET(request: Request) {
   }
 
   if (authHeader !== `Bearer ${secret}`) {
-    return NextResponse.json({ error: "Unauthorized", hint: "Use: Authorization: Bearer <SETUP_SECRET>" }, { status: 401 });
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // Check DB connection first
   try {
     const test = await sql`SELECT 1 as connected`;
     if (!test.rows[0]) {
-      return NextResponse.json({ error: "Database connection failed — no rows returned" }, { status: 500 });
+      return NextResponse.json({ error: "DB connection failed" }, { status: 500 });
     }
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
-    return NextResponse.json({
-      error: "Database connection failed",
-      detail: message,
-      hint: "Check POSTGRES_URL env var is set in Vercel"
-    }, { status: 500 });
+    return NextResponse.json({ error: "DB connection failed", detail: message }, { status: 500 });
   }
 
-  // Create table
   try {
-    await sql`
-      CREATE TABLE IF NOT EXISTS benchmark_runs (
-        id            TEXT PRIMARY KEY,
-        created_at    TIMESTAMP DEFAULT NOW(),
-        gpu_name      TEXT NOT NULL,
-        gpu_vendor    TEXT NOT NULL,
-        gpu_arch      TEXT NOT NULL DEFAULT '',
-        max_buffer    BIGINT NOT NULL DEFAULT 0,
-        features      INT NOT NULL DEFAULT 0,
-        browser       TEXT NOT NULL DEFAULT '',
-        os            TEXT NOT NULL DEFAULT '',
-        parallel_gps  REAL,
-        sequential_gps REAL,
-        matrix_gps    REAL,
-        score         INT NOT NULL DEFAULT 0
-      )
-    `;
+    // Add new columns to existing table (safe — IF NOT EXISTS equivalent via ALTER)
+    const migrations = [
+      `ALTER TABLE benchmark_runs ADD COLUMN IF NOT EXISTS rastrigin_gps REAL`,
+      `ALTER TABLE benchmark_runs ADD COLUMN IF NOT EXISTS nbody_gps REAL`,
+      `ALTER TABLE benchmark_runs ADD COLUMN IF NOT EXISTS acrobot_gps REAL`,
+      `ALTER TABLE benchmark_runs ADD COLUMN IF NOT EXISTS mountaincar_gps REAL`,
+      `ALTER TABLE benchmark_runs ADD COLUMN IF NOT EXISTS montecarlo_gps REAL`,
+      `ALTER TABLE benchmark_runs ADD COLUMN IF NOT EXISTS max_workgroup_x INT DEFAULT 0`,
+      `ALTER TABLE benchmark_runs ADD COLUMN IF NOT EXISTS max_workgroup_y INT DEFAULT 0`,
+      `ALTER TABLE benchmark_runs ADD COLUMN IF NOT EXISTS max_workgroup_z INT DEFAULT 0`,
+      `ALTER TABLE benchmark_runs ADD COLUMN IF NOT EXISTS max_invocations INT DEFAULT 0`,
+      `ALTER TABLE benchmark_runs ADD COLUMN IF NOT EXISTS backend TEXT DEFAULT ''`,
+      `ALTER TABLE benchmark_runs ADD COLUMN IF NOT EXISTS device_pixel_ratio REAL DEFAULT 1`,
+      `ALTER TABLE benchmark_runs ADD COLUMN IF NOT EXISTS screen_width INT DEFAULT 0`,
+      `ALTER TABLE benchmark_runs ADD COLUMN IF NOT EXISTS screen_height INT DEFAULT 0`,
+      `ALTER TABLE benchmark_runs ADD COLUMN IF NOT EXISTS is_mobile BOOLEAN DEFAULT false`,
+      `ALTER TABLE benchmark_runs ADD COLUMN IF NOT EXISTS rastrigin_mean REAL`,
+      `ALTER TABLE benchmark_runs ADD COLUMN IF NOT EXISTS rastrigin_min REAL`,
+      `ALTER TABLE benchmark_runs ADD COLUMN IF NOT EXISTS rastrigin_max REAL`,
+      `ALTER TABLE benchmark_runs ADD COLUMN IF NOT EXISTS rastrigin_std REAL`,
+      `ALTER TABLE benchmark_runs ADD COLUMN IF NOT EXISTS nbody_mean REAL`,
+      `ALTER TABLE benchmark_runs ADD COLUMN IF NOT EXISTS nbody_min REAL`,
+      `ALTER TABLE benchmark_runs ADD COLUMN IF NOT EXISTS nbody_max REAL`,
+      `ALTER TABLE benchmark_runs ADD COLUMN IF NOT EXISTS nbody_std REAL`,
+      `ALTER TABLE benchmark_runs ADD COLUMN IF NOT EXISTS acrobot_mean REAL`,
+      `ALTER TABLE benchmark_runs ADD COLUMN IF NOT EXISTS acrobot_min REAL`,
+      `ALTER TABLE benchmark_runs ADD COLUMN IF NOT EXISTS acrobot_max REAL`,
+      `ALTER TABLE benchmark_runs ADD COLUMN IF NOT EXISTS acrobot_std REAL`,
+      `ALTER TABLE benchmark_runs ADD COLUMN IF NOT EXISTS mountaincar_mean REAL`,
+      `ALTER TABLE benchmark_runs ADD COLUMN IF NOT EXISTS mountaincar_min REAL`,
+      `ALTER TABLE benchmark_runs ADD COLUMN IF NOT EXISTS mountaincar_max REAL`,
+      `ALTER TABLE benchmark_runs ADD COLUMN IF NOT EXISTS mountaincar_std REAL`,
+      `ALTER TABLE benchmark_runs ADD COLUMN IF NOT EXISTS montecarlo_mean REAL`,
+      `ALTER TABLE benchmark_runs ADD COLUMN IF NOT EXISTS montecarlo_min REAL`,
+      `ALTER TABLE benchmark_runs ADD COLUMN IF NOT EXISTS montecarlo_max REAL`,
+      `ALTER TABLE benchmark_runs ADD COLUMN IF NOT EXISTS montecarlo_std REAL`,
+    ];
 
-    return NextResponse.json({ ok: true, message: "Table created successfully" });
+    for (const m of migrations) {
+      await sql.query(m);
+    }
+
+    return NextResponse.json({ ok: true, message: "Migrations applied", columns_added: migrations.length });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
-    return NextResponse.json({ error: "Table creation failed", detail: message }, { status: 500 });
+    return NextResponse.json({ error: "Migration failed", detail: message }, { status: 500 });
   }
 }

@@ -182,9 +182,12 @@ export default function HomePage() {
     if (!allDone || submitted || completedResults.length === 0 || !gpuInfo?.supported) return;
     setSubmitted(true);
 
-    const parallel = completedResults.find((r) => r.name === "Rastrigin");
-    const sequential = completedResults.find((r) => r.name === "N-Body Simulation");
-    const matrix = completedResults.find((r) => r.name === "Monte Carlo Pi");
+    const find = (name: string) => completedResults.find((r) => r.name === name);
+    const rastrigin = find("Rastrigin");
+    const nbody = find("N-Body Simulation");
+    const acrobot = find("Acrobot-v1");
+    const mountaincar = find("MountainCar-v0");
+    const montecarlo = find("Monte Carlo Pi");
 
     const geoMean = Math.round(
       Math.pow(
@@ -192,6 +195,8 @@ export default function HomePage() {
         1 / completedResults.length
       )
     );
+
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
     fetch("/api/results", {
       method: "POST",
@@ -202,12 +207,49 @@ export default function HomePage() {
         gpuArch: gpuInfo.architecture,
         maxBuffer: gpuInfo.maxBufferSize,
         features: gpuInfo.features.length,
-        parallel: parallel?.throughput ?? null,
-        sequential: sequential?.throughput ?? null,
-        matrix: matrix?.throughput ?? null,
+        maxWorkgroupX: gpuInfo.maxComputeWorkgroupSize[0],
+        maxWorkgroupY: gpuInfo.maxComputeWorkgroupSize[1],
+        maxWorkgroupZ: gpuInfo.maxComputeWorkgroupSize[2],
+        maxInvocations: gpuInfo.maxComputeInvocationsPerWorkgroup,
+        backend: gpuInfo.architecture || "",
+        devicePixelRatio: window.devicePixelRatio || 1,
+        screenWidth: window.screen.width,
+        screenHeight: window.screen.height,
+        isMobile,
+        // Legacy columns (backward compat)
+        parallel: rastrigin?.throughput ?? null,
+        sequential: nbody?.throughput ?? null,
+        matrix: montecarlo?.throughput ?? null,
         score: geoMean,
+        // New per-benchmark columns
+        rastrigin: rastrigin?.throughput ?? null,
+        nbody: nbody?.throughput ?? null,
+        acrobot: acrobot?.throughput ?? null,
+        mountaincar: mountaincar?.throughput ?? null,
+        montecarlo: montecarlo?.throughput ?? null,
+        // Timing stats
+        rastriginMean: rastrigin?.meanTime ?? null,
+        rastriginMin: rastrigin?.minTime ?? null,
+        rastriginMax: rastrigin?.maxTime ?? null,
+        rastriginStd: rastrigin?.stdDev ?? null,
+        nbodyMean: nbody?.meanTime ?? null,
+        nbodyMin: nbody?.minTime ?? null,
+        nbodyMax: nbody?.maxTime ?? null,
+        nbodyStd: nbody?.stdDev ?? null,
+        acrobotMean: acrobot?.meanTime ?? null,
+        acrobotMin: acrobot?.minTime ?? null,
+        acrobotMax: acrobot?.maxTime ?? null,
+        acrobotStd: acrobot?.stdDev ?? null,
+        mountaincarMean: mountaincar?.meanTime ?? null,
+        mountaincarMin: mountaincar?.minTime ?? null,
+        mountaincarMax: mountaincar?.maxTime ?? null,
+        mountaincarStd: mountaincar?.stdDev ?? null,
+        montecarloMean: montecarlo?.meanTime ?? null,
+        montecarloMin: montecarlo?.minTime ?? null,
+        montecarloMax: montecarlo?.maxTime ?? null,
+        montecarloStd: montecarlo?.stdDev ?? null,
       }),
-    }).catch(() => { /* silent fail — don't block UX for telemetry */ });
+    }).catch(() => { /* silent fail */ });
   }, [allDone, submitted, completedResults, gpuInfo]);
 
   return (
