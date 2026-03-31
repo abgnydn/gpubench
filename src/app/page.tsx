@@ -261,10 +261,24 @@ export default function HomePage() {
       </div>
 
       {/* Header */}
-      <header className="max-w-3xl mx-auto px-6 pt-20 pb-6 text-center">
-        <a href="/why" className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-bench-accent/10 border border-bench-accent/30 text-bench-accent text-sm font-medium mb-8 hover:bg-bench-accent/20 hover:border-bench-accent/50 hover:shadow-[0_0_16px_rgba(34,211,238,0.15)] transition-all cursor-pointer underline-offset-2 hover:underline">
-          Why this matters &rarr;
-        </a>
+      <header className="max-w-3xl mx-auto px-6 pt-12 pb-6 text-center">
+        <div className="flex items-center justify-center gap-2 mb-6">
+          <svg className="w-5 h-5 text-bench-accent" viewBox="0 0 32 32" fill="none">
+            <circle cx="16" cy="16" r="14" stroke="currentColor" strokeWidth="2.5" strokeDasharray="60 28" strokeLinecap="round"/>
+            <circle cx="16" cy="16" r="2.5" fill="currentColor"/>
+          </svg>
+          <span className="font-bold text-bench-text">WebGPU Bench</span>
+        </div>
+
+        {/* Tab Switcher */}
+        <div className="inline-flex rounded-lg bg-bench-surface border border-bench-border p-1 mb-8">
+          <span className="px-4 py-2 rounded-md text-sm font-medium bg-bench-accent/10 text-bench-accent">
+            GPU Compute
+          </span>
+          <a href="/transformer" className="px-4 py-2 rounded-md text-sm font-medium text-bench-muted hover:text-bench-text transition">
+            Transformer Fusion
+          </a>
+        </div>
         <h1 className="text-4xl md:text-5xl font-bold tracking-tight leading-[1.1] mb-4">
           How fast is your GPU
           <br />
@@ -402,6 +416,7 @@ export default function HomePage() {
             </div>
             <div className="flex items-center gap-5 text-sm text-bench-muted">
               <a href="/why" className="hover:text-bench-text transition">Why this matters</a>
+              <a href={LINKS.research} className="hover:text-bench-text transition">Research</a>
               <a href={LINKS.repo} className="hover:text-bench-text transition">GitHub</a>
               <a href="/privacy" className="hover:text-bench-text transition">Privacy</a>
               <span>MIT License</span>

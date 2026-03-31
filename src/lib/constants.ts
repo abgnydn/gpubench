@@ -6,8 +6,11 @@
 export const LINKS = {
   doi: "https://doi.org/10.5281/zenodo.19343570",
   doiShort: "doi:10.5281/zenodo.19343570",
+  transformerDoi: "https://doi.org/10.5281/zenodo.19344277",
   paper: "https://github.com/abgnydn/webgpu-kernel-fusion",
+  transformerPaper: "https://github.com/abgnydn/webgpu-transformer-fusion",
   repo: "https://github.com/abgnydn/gpubench",
+  research: "https://kernelfusion.dev",
   site: "https://gpubench.dev",
 } as const;
 

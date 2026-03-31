@@ -60,6 +60,29 @@ export async function GET(request: Request) {
       `ALTER TABLE benchmark_runs ADD COLUMN IF NOT EXISTS montecarlo_min REAL`,
       `ALTER TABLE benchmark_runs ADD COLUMN IF NOT EXISTS montecarlo_max REAL`,
       `ALTER TABLE benchmark_runs ADD COLUMN IF NOT EXISTS montecarlo_std REAL`,
+      // Transformer benchmark table
+      `CREATE TABLE IF NOT EXISTS transformer_runs (
+        id              TEXT PRIMARY KEY,
+        created_at      TIMESTAMP DEFAULT NOW(),
+        gpu_name        TEXT NOT NULL,
+        gpu_vendor      TEXT NOT NULL DEFAULT '',
+        gpu_arch        TEXT NOT NULL DEFAULT '',
+        browser         TEXT NOT NULL DEFAULT '',
+        os              TEXT NOT NULL DEFAULT '',
+        config          TEXT DEFAULT '',
+        layers          INT DEFAULT 0,
+        d_model         INT DEFAULT 0,
+        dispatches      INT DEFAULT 0,
+        unfused_ms      REAL,
+        fused_1t_ms     REAL,
+        parallel_ms     REAL,
+        speedup_1t      REAL,
+        speedup_parallel REAL,
+        tokens_per_sec  REAL,
+        screen_width    INT DEFAULT 0,
+        screen_height   INT DEFAULT 0,
+        is_mobile       BOOLEAN DEFAULT false
+      )`,
     ];
 
     for (const m of migrations) {
