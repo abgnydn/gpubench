@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect } from "react";
 import { GpuInfoCard } from "@/components/gpu-info-card";
 import type { GpuInfo } from "@/lib/gpu-detect";
 import { LINKS } from "@/lib/constants";
+import { PaperCard } from "@/components/paper-card";
 
 interface BenchResult {
   label: string;
@@ -283,6 +284,13 @@ export default function TransformerPage() {
             </pre>
           </div>
         )}
+
+        <PaperCard
+          title="Single-Kernel Fusion for Autoregressive Transformer Decoding via WebGPU Compute Shaders"
+          description="Fusing the entire autoregressive decoding loop into a single GPU dispatch achieves 66–458× over unfused dispatch. The parallel kernel beats PyTorch MPS by 7.5–161× at all tested sizes."
+          doi={LINKS.transformerDoi}
+          doiLabel={LINKS.transformerDoiShort}
+        />
       </main>
 
       {/* Footer */}

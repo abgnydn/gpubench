@@ -213,7 +213,7 @@ export default function WhyPage() {
           </p>
           <div className="flex flex-wrap gap-3 justify-center">
             <a href="/" className="btn-primary">Run the Benchmark</a>
-            <a href={LINKS.doi} className="btn-secondary">Read the Preprint</a>
+            <a href={LINKS.ecDoi} className="btn-secondary">Read the Preprint</a>
           </div>
         </section>
 

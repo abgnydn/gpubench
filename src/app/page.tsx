@@ -7,6 +7,7 @@ import { ResultsSummary } from "@/components/results-summary";
 import type { GpuInfo } from "@/lib/gpu-detect";
 import type { BenchmarkResult } from "@/lib/benchmark-runner";
 import { LINKS } from "@/lib/constants";
+import { PaperCard } from "@/components/paper-card";
 
 type BenchStatus = "idle" | "warmup" | "running" | "done";
 
@@ -367,40 +368,12 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* Paper Section */}
-        <div className="pt-8">
-          <div className="flex items-center gap-4 pb-6">
-            <div className="flex-1 h-px bg-bench-border" />
-            <span className="text-xs text-bench-muted font-medium uppercase tracking-widest">Research</span>
-            <div className="flex-1 h-px bg-bench-border" />
-          </div>
-
-          <section id="paper" className="card">
-            <div className="flex items-start gap-4">
-              <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-bench-accent/10 flex items-center justify-center">
-                <svg className="w-5 h-5 text-bench-accent" viewBox="0 0 20 20" fill="none">
-                  <path d="M4 2h8l4 4v12a2 2 0 01-2 2H4a2 2 0 01-2-2V4a2 2 0 012-2z" stroke="currentColor" strokeWidth="1.5"/>
-                  <path d="M12 2v4h4M6 10h8M6 14h5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-                </svg>
-              </div>
-              <div className="flex-1 min-w-0">
-                <h2 className="text-base font-semibold mb-2">The science behind the benchmarks</h2>
-                <p className="text-sm text-bench-muted leading-relaxed mb-4">
-                  These benchmarks are based on research demonstrating that kernel fusion
-                  achieves 159&times; over PyTorch (WebGPU, same M2 Pro) and 720&times; (CUDA,
-                  same T4). The advantage is GPU-API-agnostic &mdash; confirmed across CUDA,
-                  WebGPU, JAX, and Triton.
-                </p>
-                <div className="bg-bench-bg rounded-lg p-4 font-mono text-xs text-bench-muted/80 border border-bench-border/50">
-                  <p className="text-bench-text/80">Gunaydin, A.B. (2026)</p>
-                  <p>Single-Kernel Fusion for Sequential Fitness Evaluation</p>
-                  <p>via WebGPU Compute Shaders.</p>
-                  <a href={LINKS.doi} className="text-bench-accent hover:underline">{LINKS.doiShort}</a>
-                </div>
-              </div>
-            </div>
-          </section>
-        </div>
+        <PaperCard
+          title="Single-Kernel Fusion for Sequential Fitness Evaluation via WebGPU Compute Shaders"
+          description="Kernel fusion achieves 159× over PyTorch (WebGPU, same M2 Pro) and 720× (CUDA, same T4). GPU-API-agnostic — confirmed across CUDA, WebGPU, JAX, and Triton."
+          doi={LINKS.ecDoi}
+          doiLabel={LINKS.ecDoiShort}
+        />
       </main>
 
       {/* Footer */}
