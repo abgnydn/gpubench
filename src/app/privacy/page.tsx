@@ -43,9 +43,12 @@ export default function PrivacyPage() {
                 <div className="space-y-2">
                   {[
                     "GPU adapter name, vendor, and architecture",
-                    "WebGPU device limits (buffer size, workgroup size)",
-                    "Benchmark throughput results (gen/s, timing stats)",
+                    "WebGPU device limits (buffer size, workgroup size, max invocations)",
+                    "GPU backend (Metal, Vulkan, D3D12)",
+                    "Benchmark throughput results and timing statistics",
                     "Browser and OS (from user agent)",
+                    "Screen dimensions and device pixel ratio",
+                    "Mobile vs desktop detection",
                   ].map((item) => (
                     <div key={item} className="flex items-start gap-2 text-sm text-bench-muted">
                       <svg className="w-3.5 h-3.5 text-bench-accent mt-0.5 flex-shrink-0" viewBox="0 0 14 14" fill="none">
