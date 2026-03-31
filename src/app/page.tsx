@@ -360,7 +360,7 @@ export default function HomePage() {
             </div>
             <div className="flex items-center gap-5 text-sm text-bench-muted">
               <a href="/why" className="hover:text-bench-text transition">Why this matters</a>
-              <a href={LINKS.github} className="hover:text-bench-text transition">GitHub</a>
+              <a href={LINKS.repo} className="hover:text-bench-text transition">GitHub</a>
               <a href="/privacy" className="hover:text-bench-text transition">Privacy</a>
               <span>MIT License</span>
             </div>
