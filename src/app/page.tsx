@@ -6,6 +6,7 @@ import { GpuInfoCard } from "@/components/gpu-info-card";
 import { ResultsSummary } from "@/components/results-summary";
 import type { GpuInfo } from "@/lib/gpu-detect";
 import type { BenchmarkResult } from "@/lib/benchmark-runner";
+import { LINKS } from "@/lib/constants";
 
 type BenchStatus = "idle" | "warmup" | "running" | "done";
 
@@ -338,7 +339,7 @@ export default function HomePage() {
                   <p className="text-bench-text/80">Gunaydin, A.B. (2026)</p>
                   <p>Single-Kernel Fusion for Sequential Fitness Evaluation</p>
                   <p>via WebGPU Compute Shaders.</p>
-                  <a href="https://doi.org/10.5281/zenodo.19335214" className="text-bench-accent hover:underline">doi:10.5281/zenodo.19335214</a>
+                  <a href={LINKS.doi} className="text-bench-accent hover:underline">{LINKS.doiShort}</a>
                 </div>
               </div>
             </div>
@@ -359,7 +360,7 @@ export default function HomePage() {
             </div>
             <div className="flex items-center gap-5 text-sm text-bench-muted">
               <a href="/why" className="hover:text-bench-text transition">Why this matters</a>
-              <a href="https://github.com/abgnydn/webgpu-kernel-fusion" className="hover:text-bench-text transition">GitHub</a>
+              <a href={LINKS.github} className="hover:text-bench-text transition">GitHub</a>
               <a href="/privacy" className="hover:text-bench-text transition">Privacy</a>
               <span>MIT License</span>
             </div>

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { LINKS } from "@/lib/constants";
 
 export const metadata: Metadata = {
   title: "Why This Matters — WebGPU Bench",
@@ -212,7 +213,7 @@ export default function WhyPage() {
           </p>
           <div className="flex flex-wrap gap-3 justify-center">
             <a href="/" className="btn-primary">Run the Benchmark</a>
-            <a href="https://doi.org/10.5281/zenodo.19335214" className="btn-secondary">Read the Preprint</a>
+            <a href={LINKS.doi} className="btn-secondary">Read the Preprint</a>
           </div>
         </section>
 
@@ -230,7 +231,7 @@ export default function WhyPage() {
               <span className="font-semibold">WebGPU Bench</span>
             </div>
             <div className="flex items-center gap-5 text-sm text-bench-muted">
-              <a href="https://github.com/abgnydn/webgpu-kernel-fusion" className="hover:text-bench-text transition">GitHub</a>
+              <a href={LINKS.github} className="hover:text-bench-text transition">GitHub</a>
               <a href="/privacy" className="hover:text-bench-text transition">Privacy</a>
               <span>MIT License</span>
             </div>

@@ -18,7 +18,7 @@ Real WebGPU compute benchmarks running on your hardware. No install, no account 
 | **MountainCar-v0** | Sequential | Standard Gym RL, 200 timesteps |
 | **Monte Carlo Pi** | Parallel | Classic estimation, 100K samples per worker |
 
-All benchmarks run as real WGSL compute shaders dispatched via the WebGPU API. Sequential benchmarks fuse all timesteps into a single GPU dispatch — the core technique from our [research preprint](https://doi.org/10.5281/zenodo.19335214).
+All benchmarks run as real WGSL compute shaders dispatched via the WebGPU API. Sequential benchmarks fuse all timesteps into a single GPU dispatch — the core technique from our [research preprint](https://doi.org/10.5281/zenodo.19342888).
 
 ## Results
 
@@ -41,7 +41,7 @@ This benchmark site demonstrates kernel fusion — fusing sequential GPU dispatc
 - **159×** over PyTorch MPS (same M2 Pro GPU)
 - **720×** over PyTorch CUDA (same Tesla T4 GPU)
 - Confirmed across **4 GPU APIs**: CUDA, WebGPU, JAX/XLA, Triton
-- Preprint: [doi.org/10.5281/zenodo.19335214](https://doi.org/10.5281/zenodo.19335214)
+- Preprint: [doi.org/10.5281/zenodo.19342888](https://doi.org/10.5281/zenodo.19342888)
 - Code + paper: [github.com/abgnydn/webgpu-kernel-fusion](https://github.com/abgnydn/webgpu-kernel-fusion)
 
 ## Tech Stack

@@ -1,3 +1,5 @@
+import { LINKS } from "@/lib/constants";
+
 export default function PrivacyPage() {
   return (
     <div className="min-h-screen">
@@ -149,7 +151,7 @@ export default function PrivacyPage() {
         {/* Footer */}
         <div className="mt-16 pt-8 border-t border-bench-border/50 flex items-center justify-between">
           <p className="text-xs text-bench-muted/50">Last updated: March 2026</p>
-          <a href="https://github.com/abgnydn/webgpu-kernel-fusion" className="text-xs text-bench-accent/60 hover:text-bench-accent transition">
+          <a href={LINKS.github} className="text-xs text-bench-accent/60 hover:text-bench-accent transition">
             Questions? GitHub &rarr;
           </a>
         </div>
