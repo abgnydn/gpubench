@@ -1,0 +1,140 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-bench-bg: #09090b;
+  --color-bench-surface: #18181b;
+  --color-bench-border: #27272a;
+  --color-bench-text: #fafafa;
+  --color-bench-muted: #71717a;
+  --color-bench-accent: #22d3ee;
+  --color-bench-green: #4ade80;
+  --color-bench-yellow: #facc15;
+  --color-bench-red: #f87171;
+}
+
+:root {
+  --bench-bg: #09090b;
+  --bench-surface: #18181b;
+  --bench-border: #27272a;
+  --bench-text: #fafafa;
+  --bench-muted: #71717a;
+  --bench-accent: #22d3ee;
+  --bench-green: #4ade80;
+  --bench-yellow: #facc15;
+  --bench-red: #f87171;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background: var(--bench-bg);
+  color: var(--bench-text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bench-bg);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--bench-border);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--bench-muted);
+}
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #09090b;
+  background: var(--bench-accent);
+  border-radius: 0.5rem;
+  transition: all 0.15s ease;
+  cursor: pointer;
+  border: none;
+}
+.btn-primary:hover {
+  filter: brightness(1.15);
+  box-shadow: 0 0 20px rgba(34, 211, 238, 0.3);
+}
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  filter: none;
+  box-shadow: none;
+}
+
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--bench-text);
+  background: transparent;
+  border: 1px solid var(--bench-border);
+  border-radius: 0.5rem;
+  transition: all 0.15s ease;
+  cursor: pointer;
+}
+.btn-secondary:hover {
+  background: var(--bench-surface);
+  border-color: var(--bench-muted);
+}
+
+.card {
+  background: var(--bench-surface);
+  border: 1px solid var(--bench-border);
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+}
+
+.badge {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.125rem 0.5rem;
+  border-radius: 9999px;
+}
+
+.glow-accent {
+  transition: box-shadow 0.2s ease;
+}
+.glow-accent:hover {
+  box-shadow: 0 0 24px rgba(34, 211, 238, 0.15);
+}
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes progress-fill {
+  from { width: 0%; }
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+.animate-spin-slow {
+  animation: spin-slow 3s linear infinite;
+}
