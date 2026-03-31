@@ -4,8 +4,8 @@
 // ═══════════════════════════════════════════
 
 export const LINKS = {
-  doi: "https://doi.org/10.5281/zenodo.19342888",
-  doiShort: "doi:10.5281/zenodo.19342888",
+  doi: "https://doi.org/10.5281/zenodo.19343570",
+  doiShort: "doi:10.5281/zenodo.19343570",
   paper: "https://github.com/abgnydn/webgpu-kernel-fusion",
   repo: "https://github.com/abgnydn/gpubench",
   site: "https://gpubench.dev",
