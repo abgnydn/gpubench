@@ -161,7 +161,7 @@ export default function TransformerPage() {
         </h1>
         <p className="text-bench-muted max-w-xl mx-auto mb-2">
           Fused vs unfused autoregressive decoding. Single-threaded and parallel (64 threads).
-          9 configs + sequence scaling.
+          6 configs + sequence scaling.
         </p>
       </header>
 
