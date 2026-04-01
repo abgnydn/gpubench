@@ -125,7 +125,8 @@ export default function PrivacyPage() {
                 <p className="text-sm text-bench-muted leading-relaxed">
                   The benchmark shaders run entirely on your GPU inside your browser. No computation
                   is offloaded to our servers. Only the final results (throughput numbers and hardware
-                  info) are transmitted after the benchmarks complete.
+                  info) are transmitted after the benchmarks complete. We use Vercel Web Analytics
+                  to count page views and referrers. No cookies or personal data are collected.
                 </p>
               </div>
             </div>
