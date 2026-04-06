@@ -634,15 +634,18 @@ worker.onmessage = (e) => {
         // Device telemetry (shared module)
         reportDevice('Flappy Evolution', msg.bestFit, msg.gen, parseFloat(msg.speed));
 
-        // P2P broadcast — every time we improve
+        // P2P broadcast — only when integer pipe count improves (not fractional bonuses)
         if (msg.bestFit > bestScore) {
-            const oldScore = bestScore;
+            const oldPipes = Math.floor(bestScore);
             bestScore = msg.bestFit;
-            if (p2p) {
-                log(`New best: ${Math.floor(oldScore)} → ${Math.floor(bestScore)} pipes, broadcasting...`, 'p2p');
-                p2p.broadcastElite(bestGenome, msg.bestFit);
-            } else {
-                log(`New best: ${Math.floor(oldScore)} → ${Math.floor(bestScore)} pipes (P2P not connected yet)`, 'fit');
+            const newPipes = Math.floor(bestScore);
+            if (newPipes > oldPipes) {
+                if (p2p) {
+                    log(`New best: ${oldPipes} → ${newPipes} pipes, broadcasting...`, 'p2p');
+                    p2p.broadcastElite(bestGenome, msg.bestFit);
+                } else {
+                    log(`New best: ${oldPipes} → ${newPipes} pipes (P2P not connected yet)`, 'fit');
+                }
             }
         }
     }
