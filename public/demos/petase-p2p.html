@@ -145,9 +145,10 @@ class P2P {
             defaultRoom: room,
             signalingUrl: sigUrl,
             genomeSize: EVOLVABLE,
-            onEliteReceived: (genome, fitness) => {
+            onEliteReceived: (genome, fitness, from) => {
                 engine.postMessage({ type: 'inject', genome: Array.from(genome) });
                 document.getElementById('foreignFit').textContent = fitness.toFixed(2);
+                log(`Received elite (fitness: ${fitness.toFixed(2)}) from ${from}`, 'p2p');
             },
             onStatusChange: (status) => {
                 const set = (id, txt, cls) => { const el = document.getElementById(id); if (el) { el.textContent = txt; if (cls) el.className = 'stat-value ' + cls; } };

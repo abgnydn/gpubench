@@ -194,6 +194,8 @@ class P2P {
                 this.gensRecv++;
                 document.getElementById('recv').textContent = this.gensRecv;
                 const fromAllele = msg.allele !== undefined ? msg.allele : '?';
+                log('Elite via relay (fit=' + (msg.fitness||0).toFixed(2) + ', allele=' + (ALLELE_NAMES[fromAllele]||fromAllele) + ')', 'p2p');
+                const fromAllele = msg.allele !== undefined ? msg.allele : '?';
                 const seq = msg.sequence || '';
                 if (seq && fromAllele !== '?') checkCrossAllele(seq, fromAllele);
                 log('Elite from ' + ALLELE_NAMES[fromAllele] + ': ' + seq + ' (fit=' + (msg.fitness||0).toFixed(2) + ') [WS]', fromAllele === currentAllele ? 'p2p' : 'cross');

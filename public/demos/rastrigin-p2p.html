@@ -159,6 +159,7 @@ class P2P {
                 if (typeof foreignEliteEvents !== 'undefined') {
                     foreignEliteEvents.push({ genIndex: fitHistory.length, fitness });
                 }
+                log(`Received elite (fitness: ${fitness.toFixed(2)}) from ${from}`, 'p2p');
             },
             onStatusChange: (status) => {
                 const nodeEl = document.getElementById('nodeId');
