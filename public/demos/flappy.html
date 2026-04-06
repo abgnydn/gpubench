@@ -61,12 +61,11 @@ body{background:#0a0e1a;color:#c8d6e5;font-family:'Inter',system-ui,sans-serif;o
 
 <div class="controls">
   <button id="p2pBtn" class="btn outline">Connect P2P</button>
-  <button id="p2pPublicBtn" class="btn outline" style="font-size:0.68rem;padding:6px 12px">Join Public Room</button>
   <button id="startBtn" class="btn accent" disabled>Initializing GPU...</button>
   <button id="stopBtn" class="btn danger" disabled>Stop</button>
-  <label style="display:inline-flex;align-items:center;gap:6px;margin-left:12px;color:#94a3b8;font-size:12px;">
+  <label class="ctrl-label">
     Population
-    <select id="popSelect" style="background:#1e293b;color:#e2e8f0;border:1px solid #334155;border-radius:4px;padding:2px 6px;font-size:12px;font-family:monospace;">
+    <select id="popSelect" class="ctrl-select">
       <option value="512">512</option>
       <option value="1024">1,024</option>
       <option value="2048">2,048</option>
@@ -83,9 +82,9 @@ body{background:#0a0e1a;color:#c8d6e5;font-family:'Inter',system-ui,sans-serif;o
   <span id="roomPeers" style="color:#94a3b8">0 peers</span>
 </div>
 
-<p style="text-align:center;color:#64748b;font-size:11px;margin:0 0 8px;line-height:1.4;">
-  The birds below are a <strong style="color:#94a3b8">50-bird visual replay</strong> of the best brain found by the GPU.
-  The GPU silently evaluates <strong style="color:#00d4aa" id="popLabel">4,096</strong> birds per generation — you only see the result.
+<p class="explain">
+  One bird plays at normal speed using the best brain the GPU has found so far.
+  The GPU evaluates <strong class="hl-num" id="popLabel">4,096</strong> birds per generation in the background — you just see the smartest one.
 </p>
 <div class="game-wrap">
   <canvas id="gameCanvas"></canvas>
@@ -824,7 +823,6 @@ function initP2P(room) {
 
     $('p2pBtn').textContent = 'Connected';
     $('p2pBtn').disabled = true;
-    $('p2pPublicBtn').disabled = true;
 
     if (bestGenome && bestScore > 0) {
         setTimeout(() => { if (p2p) p2p.broadcastElite(bestGenome, bestScore); }, 2000);
@@ -854,10 +852,6 @@ worker.addEventListener('message', (e) => {
 $('p2pBtn').onclick = () => {
     initP2P(genRoomCode('flappy'));
     log('Created private room — share the invite link to collaborate', 'p2p');
-};
-$('p2pPublicBtn').onclick = () => {
-    initP2P('flappy-public');
-    log('Joined public room — anyone can join', 'p2p');
 };
 $('popSelect').onchange = () => {
     const n = parseInt($('popSelect').value);

@@ -30,15 +30,8 @@
     <p>Multi-allele MHC-I peptide evolution via <span class="hl">WebGPU kernel fusion</span> + <span class="hl">WebRTC P2P</span>. Each tab evolves peptides for a different HLA allele. P2P exchange finds broadly immunogenic candidates.</p>
 </div>
 
-<div id="roomBar" class="room-bar">
-    <span>Room: <span class="room-code" id="roomCode">—</span></span>
-    <a href="#" class="room-link" id="roomShareLink" onclick="navigator.clipboard.writeText(this.href);this.textContent='Copied!';setTimeout(()=>this.textContent='Copy invite link',1500);return false">Copy invite link</a>
-    <span style="color:#475569">|</span>
-    <span id="roomPeers" style="color:#94a3b8">0 peers</span>
-</div>
 <div class="controls">
     <button id="p2pBtn" class="btn outline">Connect P2P</button>
-    <button id="p2pPublicBtn" class="btn outline" style="font-size:0.68rem;padding:6px 12px">Join Public Room</button>
     <button id="startBtn" class="btn accent" disabled>Initializing GPU...</button>
     <button id="stopBtn" class="btn danger" disabled>Stop</button>
     <label class="ctrl-label">
@@ -51,6 +44,13 @@
         </select>
     </label>
     <span class="config-tag" id="alleleTag" style="background:rgba(0,212,170,0.15);color:#00d4aa">HLA-A*02:01</span>
+</div>
+
+<div id="roomBar" class="room-bar">
+    <span>Room: <span class="room-code" id="roomCode">—</span></span>
+    <a href="#" class="room-link" id="roomShareLink" onclick="navigator.clipboard.writeText(this.href);this.textContent='Copied!';setTimeout(()=>this.textContent='Copy invite link',1500);return false">Copy invite link</a>
+    <span style="color:#475569">|</span>
+    <span id="roomPeers" style="color:#94a3b8">0 peers</span>
 </div>
 
 <p class="explain">
@@ -294,6 +294,7 @@ class P2P {
 const engine = new Worker('neoantigen_engine.js');
 let t0 = null, p2p = null;
 const fitHistory = [];
+let bestBroadcastFit = -Infinity;
 
 const canvas = document.getElementById('chart');
 const ctx = canvas.getContext('2d');
@@ -352,9 +353,14 @@ engine.onmessage = (e) => {
             ).join('');
         }
 
-        if (p2p && (p2p.isConnected || (p2p.ws && p2p.ws.readyState === 1))) {
-            p2p.broadcastElite(d.bestGenome, d.bestFit, d.sequence);
         reportDevice('Neoantigen (Allele ' + currentAllele + ')', d.bestFit, d.gen, parseFloat(document.getElementById('speed')?.textContent) || 0);
+        // P2P broadcast — only on improvement
+        if (d.bestFit > bestBroadcastFit) {
+            bestBroadcastFit = d.bestFit;
+            if (p2p && (p2p.isConnected || (p2p.ws && p2p.ws.readyState === 1))) {
+                p2p.broadcastElite(d.bestGenome, d.bestFit, d.sequence);
+                log('Broadcast elite (fitness: ' + d.bestFit.toFixed(2) + ')', 'p2p');
+            }
         }
     }
 };
@@ -390,8 +396,7 @@ function showRoomBar(room) {
     document.getElementById('roomBar').classList.add('visible');
     document.getElementById('p2pBtn').textContent = 'Connected';
     document.getElementById('p2pBtn').disabled = true;
-    document.getElementById('p2pPublicBtn').disabled = true;
-}
+    }
 function connectRoom(room) {
     if (p2p) return;
     p2p = new P2P(SwarmP2P.DEFAULT_RELAY, room);
@@ -400,10 +405,6 @@ function connectRoom(room) {
 document.getElementById('p2pBtn').onclick = () => {
     connectRoom(genRoomCode('neo'));
     log('Created private room — share the invite link to collaborate', 'p2p');
-};
-document.getElementById('p2pPublicBtn').onclick = () => {
-    connectRoom('neoantigen-public');
-    log('Joined public room — anyone can join', 'p2p');
 };
 if (params.get('room')) {
     setTimeout(() => { connectRoom(params.get('room')); log('Joined room from invite link', 'p2p'); }, 300);
