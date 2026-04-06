@@ -59,8 +59,15 @@ body{background:#0a0e1a;color:#c8d6e5;font-family:'Inter',system-ui,sans-serif;o
   <p>A single <span class="hl">WebGPU kernel</span> evaluates <span class="hl">4,096 birds</span> in parallel — the entire game fused into one GPU dispatch. Open in <span class="hl">another tab</span> to connect via WebRTC and evolve faster together.</p>
 </div>
 
+<div id="roomBar" class="room-bar">
+  <span>Room: <span class="room-code" id="roomCode">—</span></span>
+  <a href="#" class="room-link" id="roomShareLink" onclick="navigator.clipboard.writeText(this.href);this.textContent='Copied!';setTimeout(()=>this.textContent='Copy invite link',1500);return false">Copy invite link</a>
+  <span style="color:#475569">|</span>
+  <span id="roomPeers" style="color:#94a3b8">0 peers</span>
+</div>
 <div class="controls">
   <button id="p2pBtn" class="btn outline">Connect P2P</button>
+  <button id="p2pPublicBtn" class="btn outline" style="font-size:0.68rem;padding:6px 12px">Join Public Room</button>
   <button id="startBtn" class="btn accent" disabled>Initializing GPU...</button>
   <button id="stopBtn" class="btn danger" disabled>Stop</button>
   <label style="display:inline-flex;align-items:center;gap:6px;margin-left:12px;color:#94a3b8;font-size:12px;">
@@ -774,9 +781,13 @@ function drawChart() {
 // ═══════════════════════════════════════════════════════
 let p2p = null;
 
+function genRoomCode(prefix) {
+    return prefix + '-' + Math.random().toString(36).slice(2, 8);
+}
+
 function initP2P(room) {
     p2p = new SwarmP2P({
-        defaultRoom: room || 'flappy-demo',
+        defaultRoom: room,
         genomeSize: 22,
         onEliteReceived: (genome, fitness, from) => {
             worker.postMessage({ type: 'inject', genome: Array.from(genome), fitness });
@@ -787,6 +798,7 @@ function initP2P(room) {
             $('roomName').textContent = status.room || '—';
             $('sent').textContent = status.sent;
             $('recv').textContent = status.received;
+            $('roomPeers').textContent = status.peers + ' peer' + (status.peers !== 1 ? 's' : '');
             if (status.peers > 0) {
                 $('p2pStatus').textContent = status.peers + ' peer' + (status.peers > 1 ? 's' : '') + ' linked';
                 $('p2pStatus').className = 'stat-value connected';
@@ -801,9 +813,18 @@ function initP2P(room) {
         onLog: (msg, cls) => log(msg, cls),
     });
     p2p.connect(room);
-    $('p2pBtn').textContent = 'Connecting...';
+
+    // Show room bar with share link
+    $('roomCode').textContent = room;
+    const shareUrl = new URL(window.location.href);
+    shareUrl.searchParams.set('room', room);
+    $('roomShareLink').href = shareUrl.toString();
+    $('roomBar').classList.add('visible');
+
+    $('p2pBtn').textContent = 'Connected';
     $('p2pBtn').disabled = true;
-    // Broadcast current best once connected (catches evolution-ahead-of-P2P race)
+    $('p2pPublicBtn').disabled = true;
+
     if (bestGenome && bestScore > 0) {
         setTimeout(() => { if (p2p) p2p.broadcastElite(bestGenome, bestScore); }, 2000);
     }
@@ -830,8 +851,12 @@ worker.addEventListener('message', (e) => {
     }
 });
 $('p2pBtn').onclick = () => {
-    const params = new URLSearchParams(window.location.search);
-    initP2P(params.get('room') || 'flappy-demo');
+    initP2P(genRoomCode('flappy'));
+    log('Created private room — share the invite link to collaborate', 'p2p');
+};
+$('p2pPublicBtn').onclick = () => {
+    initP2P('flappy-public');
+    log('Joined public room — anyone can join', 'p2p');
 };
 $('popSelect').onchange = () => {
     const n = parseInt($('popSelect').value);
@@ -849,10 +874,13 @@ worker.addEventListener('message', (e) => {
     }
 });
 
-// Auto-connect
+// Auto-connect if invite link (?room=xxx)
 const params = new URLSearchParams(window.location.search);
-if (params.has('room') || params.has('sig')) {
-    setTimeout(() => initP2P(params.get('room')), 300);
+if (params.has('room')) {
+    setTimeout(() => {
+        initP2P(params.get('room'));
+        log('Joined room from invite link', 'p2p');
+    }, 300);
 }
 if (params.get('autostart') === '1') {
     setTimeout(() => $('startBtn').click(), 1000);

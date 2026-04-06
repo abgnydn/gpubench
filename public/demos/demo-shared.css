@@ -69,5 +69,12 @@ canvas.chart{width:100%;height:120px;background:#0c1221;border-radius:6px;margin
 .seq-box{background:#0c1221;border-radius:6px;padding:8px;font-family:'JetBrains Mono',monospace;font-size:0.72rem;letter-spacing:0.5px;line-height:1.6;word-break:break-all;margin:4px 0}
 .config-tag{font-family:'JetBrains Mono',monospace;font-size:0.62rem;padding:2px 8px;border-radius:10px;margin-left:6px}
 
+/* P2P room bar */
+.room-bar{display:none;align-items:center;gap:8px;justify-content:center;margin:6px 0;padding:6px 12px;background:rgba(0,212,170,0.06);border:1px solid rgba(0,212,170,0.12);border-radius:8px;max-width:900px;margin-left:auto;margin-right:auto;font-size:11px;color:#94a3b8;flex-wrap:wrap}
+.room-bar.visible{display:flex}
+.room-bar .room-code{font-family:'JetBrains Mono',monospace;color:#00d4aa;font-weight:600;letter-spacing:0.5px}
+.room-bar .room-link{color:#00d4aa;font-size:10px;text-decoration:none;border:1px solid rgba(0,212,170,0.2);padding:2px 8px;border-radius:4px;transition:all 0.15s}
+.room-bar .room-link:hover{background:rgba(0,212,170,0.1)}
+
 /* Responsive */
 @media(max-width:700px){.grid{grid-template-columns:1fr}.game-canvas{height:320px}}

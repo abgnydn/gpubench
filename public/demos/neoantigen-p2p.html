@@ -30,8 +30,15 @@
     <p>Multi-allele MHC-I peptide evolution via <span class="hl">WebGPU kernel fusion</span> + <span class="hl">WebRTC P2P</span>. Each tab evolves peptides for a different HLA allele. P2P exchange finds broadly immunogenic candidates.</p>
 </div>
 
+<div id="roomBar" class="room-bar">
+    <span>Room: <span class="room-code" id="roomCode">—</span></span>
+    <a href="#" class="room-link" id="roomShareLink" onclick="navigator.clipboard.writeText(this.href);this.textContent='Copied!';setTimeout(()=>this.textContent='Copy invite link',1500);return false">Copy invite link</a>
+    <span style="color:#475569">|</span>
+    <span id="roomPeers" style="color:#94a3b8">0 peers</span>
+</div>
 <div class="controls">
     <button id="p2pBtn" class="btn outline">Connect P2P</button>
+    <button id="p2pPublicBtn" class="btn outline" style="font-size:0.68rem;padding:6px 12px">Join Public Room</button>
     <button id="startBtn" class="btn accent" disabled>Initializing GPU...</button>
     <button id="stopBtn" class="btn danger" disabled>Stop</button>
     <label class="ctrl-label">
@@ -375,13 +382,32 @@ document.getElementById('stopBtn').onclick = () => {
     document.getElementById('stopBtn').disabled = true;
     log('Paused', 'gpu');
 };
-document.getElementById('p2pBtn').onclick = () => {
-    if (p2p) return;
-    const room = params.get('room') || 'neoantigen-swarm';
-    p2p = new P2P(SwarmP2P.DEFAULT_RELAY, room);
-    document.getElementById('p2pBtn').textContent = 'Connecting...';
+function genRoomCode(prefix) { return prefix + '-' + Math.random().toString(36).slice(2, 8); }
+function showRoomBar(room) {
+    document.getElementById('roomCode').textContent = room;
+    const u = new URL(window.location.href); u.searchParams.set('room', room);
+    document.getElementById('roomShareLink').href = u.toString();
+    document.getElementById('roomBar').classList.add('visible');
+    document.getElementById('p2pBtn').textContent = 'Connected';
     document.getElementById('p2pBtn').disabled = true;
+    document.getElementById('p2pPublicBtn').disabled = true;
+}
+function connectRoom(room) {
+    if (p2p) return;
+    p2p = new P2P(SwarmP2P.DEFAULT_RELAY, room);
+    showRoomBar(room);
+}
+document.getElementById('p2pBtn').onclick = () => {
+    connectRoom(genRoomCode('neo'));
+    log('Created private room — share the invite link to collaborate', 'p2p');
 };
+document.getElementById('p2pPublicBtn').onclick = () => {
+    connectRoom('neoantigen-public');
+    log('Joined public room — anyone can join', 'p2p');
+};
+if (params.get('room')) {
+    setTimeout(() => { connectRoom(params.get('room')); log('Joined room from invite link', 'p2p'); }, 300);
+}
 document.getElementById('copyLogBtn').onclick = () => {
     const text = Array.from(document.getElementById('log').children).map(d => d.textContent).join('\n');
     navigator.clipboard.writeText(text).then(() => {

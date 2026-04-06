@@ -22,8 +22,15 @@
     <p><span class="hl">4,096-population</span> evolutionary optimization on a <span class="hl">2,000-dimensional</span> multimodal landscape. Open multiple tabs to form a P2P swarm via WebRTC.</p>
 </div>
 
+<div id="roomBar" class="room-bar">
+    <span>Room: <span class="room-code" id="roomCode">—</span></span>
+    <a href="#" class="room-link" id="roomShareLink" onclick="navigator.clipboard.writeText(this.href);this.textContent='Copied!';setTimeout(()=>this.textContent='Copy invite link',1500);return false">Copy invite link</a>
+    <span style="color:#475569">|</span>
+    <span id="roomPeers" style="color:#94a3b8">0 peers</span>
+</div>
 <div class="controls">
     <button id="p2pBtn" class="btn outline">Connect P2P</button>
+    <button id="p2pPublicBtn" class="btn outline" style="font-size:0.68rem;padding:6px 12px">Join Public Room</button>
     <button id="startBtn" class="btn accent" disabled>Initializing GPU...</button>
     <button id="stopBtn" class="btn danger" disabled>Stop</button>
 </div>
@@ -361,11 +368,17 @@ function log(msg, type) {
 // ═══════════════════════════════════════════════════════════════
 const params = new URLSearchParams(window.location.search);
 
+function genRoomCode(prefix) { return prefix + '-' + Math.random().toString(36).slice(2, 8); }
 function connectP2P(sig, room) {
     if (window._p2p) return;
     window._p2p = new P2P(sig, room);
-    document.getElementById('p2pBtn').textContent = 'Connected \u2022 ' + room;
+    document.getElementById('roomCode').textContent = room;
+    const u = new URL(window.location.href); u.searchParams.set('room', room);
+    document.getElementById('roomShareLink').href = u.toString();
+    document.getElementById('roomBar').classList.add('visible');
+    document.getElementById('p2pBtn').textContent = 'Connected';
     document.getElementById('p2pBtn').disabled = true;
+    document.getElementById('p2pPublicBtn').disabled = true;
 }
 
 function startEvolution() {
@@ -390,9 +403,12 @@ document.getElementById('stopBtn').onclick = () => {
     log('Paused', 'gpu');
 };
 document.getElementById('p2pBtn').onclick = () => {
-    if (window._p2p) return;
-    const room = params.get('room') || 'rastrigin-demo';
-    connectP2P(SwarmP2P.DEFAULT_RELAY, room);
+    connectP2P(SwarmP2P.DEFAULT_RELAY, genRoomCode('rastrigin'));
+    log('Created private room — share the invite link to collaborate', 'p2p');
+};
+document.getElementById('p2pPublicBtn').onclick = () => {
+    connectP2P(SwarmP2P.DEFAULT_RELAY, 'rastrigin-public');
+    log('Joined public room — anyone can join', 'p2p');
 };
 document.getElementById('copyLogBtn').onclick = () => {
     const text = Array.from(document.getElementById('log').children).map(d => d.textContent).join('\n');
@@ -402,12 +418,12 @@ document.getElementById('copyLogBtn').onclick = () => {
     });
 };
 
-// ─── Auto-connect P2P via URL params ───
-if (params.get('sig')) {
-    const sig = params.get('sig');
-    const room = params.get('room') || 'demo-room';
-    // Defer slightly so engine Worker is initialized first
-    setTimeout(() => connectP2P(sig, room), 100);
+// Auto-connect if invite link (?room=xxx)
+if (params.get('room')) {
+    setTimeout(() => {
+        connectP2P(SwarmP2P.DEFAULT_RELAY, params.get('room'));
+        log('Joined room from invite link', 'p2p');
+    }, 300);
 }
 
 // ─── Auto-start on GPU ready (when ?autostart=1) ───
