@@ -2,8 +2,16 @@
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#0a0e1a;color:#c8d6e5;font-family:'Inter',system-ui,sans-serif;overflow-x:hidden}
 
+/* Nav */
+.demo-nav{display:flex;align-items:center;justify-content:space-between;padding:12px 20px;max-width:940px;margin:0 auto}
+.demo-nav a{text-decoration:none;display:flex;align-items:center;gap:6px;color:#94a3b8;font-size:0.82rem;transition:color 0.15s}
+.demo-nav a:hover{color:#f1f5f9}
+.demo-nav .logo{font-weight:700;color:#f1f5f9}
+.demo-nav .logo svg{color:#00d4aa}
+.demo-nav .back{font-size:0.76rem}
+
 /* Hero */
-.hero{text-align:center;padding:24px 20px 12px}
+.hero{text-align:center;padding:12px 20px 12px}
 .hero h1{font-size:1.5rem;font-weight:700;letter-spacing:-0.02em;color:#f1f5f9}
 .hero p{font-size:0.82rem;color:#94a3b8;margin-top:4px;max-width:620px;margin-left:auto;margin-right:auto;line-height:1.5}
 .hl{color:#00d4aa;font-weight:600}
