@@ -59,12 +59,6 @@ body{background:#0a0e1a;color:#c8d6e5;font-family:'Inter',system-ui,sans-serif;o
   <p>A single <span class="hl">WebGPU kernel</span> evaluates <span class="hl">4,096 birds</span> in parallel — the entire game fused into one GPU dispatch. Open in <span class="hl">another tab</span> to connect via WebRTC and evolve faster together.</p>
 </div>
 
-<div id="roomBar" class="room-bar">
-  <span>Room: <span class="room-code" id="roomCode">—</span></span>
-  <a href="#" class="room-link" id="roomShareLink" onclick="navigator.clipboard.writeText(this.href);this.textContent='Copied!';setTimeout(()=>this.textContent='Copy invite link',1500);return false">Copy invite link</a>
-  <span style="color:#475569">|</span>
-  <span id="roomPeers" style="color:#94a3b8">0 peers</span>
-</div>
 <div class="controls">
   <button id="p2pBtn" class="btn outline">Connect P2P</button>
   <button id="p2pPublicBtn" class="btn outline" style="font-size:0.68rem;padding:6px 12px">Join Public Room</button>
@@ -80,6 +74,13 @@ body{background:#0a0e1a;color:#c8d6e5;font-family:'Inter',system-ui,sans-serif;o
       <option value="8192">8,192</option>
     </select>
   </label>
+</div>
+
+<div id="roomBar" class="room-bar">
+  <span>Room: <span class="room-code" id="roomCode">—</span></span>
+  <a href="#" class="room-link" id="roomShareLink" onclick="navigator.clipboard.writeText(this.href);this.textContent='Copied!';setTimeout(()=>this.textContent='Copy invite link',1500);return false">Copy invite link</a>
+  <span style="color:#475569">|</span>
+  <span id="roomPeers" style="color:#94a3b8">0 peers</span>
 </div>
 
 <p style="text-align:center;color:#64748b;font-size:11px;margin:0 0 8px;line-height:1.4;">
