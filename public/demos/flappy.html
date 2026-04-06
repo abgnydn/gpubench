@@ -119,7 +119,7 @@ body{background:#0a0e1a;color:#c8d6e5;font-family:'Inter',system-ui,sans-serif;o
 // ─── WGSL Shader: Flappy Bird physics + NN in one fused kernel ───
 const SHADER_CODE = `
 const NW: u32 = 22u;     // 5*3+3+3*1+1
-const MAX_TICKS: u32 = 4000u;
+const MAX_TICKS: u32 = 2000u;
 const GRAVITY: f32 = 0.4;
 const JUMP_VEL: f32 = -6.5;
 const PIPE_GAP: f32 = 120.0;
@@ -226,12 +226,13 @@ fn run_episode(w: ptr<function, array<f32, 22>>) -> f32 {
             }
         }
     }
-    // Fitness: pipes (dominant) + survival + gap centering + progress toward next pipe
-    // Each component gives ES gradient signal at a different scale
+    // Fitness: pipe count is the INTEGER part, sub-pipe signals are FRACTIONAL
+    // This way the display can show floor(fitness) = actual pipes passed
     let next_pipe_x = 300.0 + f32(pipe_idx) * PIPE_SPACING - f32(last_tick) * PIPE_SPEED;
     let progress = 1.0 - clamp((next_pipe_x - BIRD_X) / PIPE_SPACING, 0.0, 1.0);
-    let survival = f32(last_tick) / f32(MAX_TICKS); // 0..1, meaningful weight
-    return score * 5.0 + progress * 2.0 + survival * 3.0 + centering_bonus;
+    let survival = f32(last_tick) / f32(MAX_TICKS);
+    // Sub-pipe signals sum to <1.0 so floor(fitness) = exact pipe count
+    return score + progress * 0.3 + survival * 0.3 + centering_bonus * 0.1;
 }
 
 @compute @workgroup_size(64)
