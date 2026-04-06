@@ -621,7 +621,7 @@ worker.onmessage = (e) => {
         $('fit').textContent = bestInt + ' pipes';
         $('speed').textContent = msg.speed + ' gen/s';
         $('scoreDisplay').textContent = bestInt;
-        $('genLabel').textContent = `Gen ${gen} (GPU) · Visual round ${visualGen}`;
+        $('genLabel').textContent = `Gen ${gen.toLocaleString()} (GPU) · ${livePipes} pipes this life`;
 
         bestGenome = new Float32Array(msg.genome);
 
