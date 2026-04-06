@@ -56,6 +56,11 @@ body{background:#0a0e1a;color:#c8d6e5;font-family:'Inter',system-ui,sans-serif;o
   <button id="p2pBtn" class="btn outline">Connect P2P</button>
   <button id="startBtn" class="btn accent" disabled>Initializing GPU...</button>
   <button id="stopBtn" class="btn danger" disabled>Stop</button>
+  <label style="display:inline-flex;align-items:center;gap:6px;margin-left:12px;color:#94a3b8;font-size:12px;">
+    Speed
+    <input type="range" id="speedSlider" min="1" max="10" value="2" style="width:80px;accent-color:#00d4aa;">
+    <span id="speedLabel" style="min-width:20px">2×</span>
+  </label>
 </div>
 
 <div class="game-wrap">
@@ -567,12 +572,16 @@ worker.onmessage = (e) => {
         // Device telemetry (shared module)
         reportDevice('Flappy Evolution', msg.bestFit, msg.gen, parseFloat(msg.speed));
 
-        // P2P broadcast — only when we improve, to avoid flooding identical genomes
-        if (msg.bestFit > bestScore && bestGenome && p2p) {
+        // P2P broadcast — every time we improve
+        if (msg.bestFit > bestScore) {
+            const oldScore = bestScore;
             bestScore = msg.bestFit;
-            p2p.broadcastElite(bestGenome, msg.bestFit);
-        } else if (msg.bestFit > bestScore) {
-            bestScore = msg.bestFit;
+            if (p2p) {
+                log(`New best: ${Math.floor(oldScore)} → ${Math.floor(bestScore)} pipes, broadcasting...`, 'p2p');
+                p2p.broadcastElite(bestGenome, msg.bestFit);
+            } else {
+                log(`New best: ${Math.floor(oldScore)} → ${Math.floor(bestScore)} pipes (P2P not connected yet)`, 'fit');
+            }
         }
     }
 };
@@ -607,7 +616,7 @@ function drawBird(x, y, color, alpha, sz) {
     ctx.globalAlpha = 1;
 }
 
-let started = false;
+let started = false, paused = false;
 
 function drawGame() {
     ctx.clearRect(0, 0, gameW, gameH);
@@ -625,9 +634,11 @@ function drawGame() {
         return;
     }
 
-    // Tick the flock (2 physics steps per frame for faster visual)
-    const { aliveCount, bestAliveScore } = tickFlock();
-    tickFlock();
+    // Tick the flock — speed slider controls ticks per frame, freeze when paused
+    const ticksPerFrame = paused ? 0 : parseInt($('speedSlider').value) || 2;
+    let lastTick = { aliveCount: flock.filter(b => b.alive).length, bestAliveScore: Math.max(0, ...flock.map(b => b.score)) };
+    for (let t = 0; t < ticksPerFrame; t++) lastTick = tickFlock();
+    const { aliveCount, bestAliveScore } = lastTick;
 
     // Draw pipes
     for (let i = 0; i < 100; i++) {
@@ -750,6 +761,12 @@ function initP2P(room) {
     p2p.connect(room);
     $('p2pBtn').textContent = 'Connecting...';
     $('p2pBtn').disabled = true;
+    // If evolution already ran, broadcast current best once connected
+    if (bestGenome && bestScore > 0) {
+        setTimeout(() => {
+            if (p2p) p2p.broadcastElite(bestGenome, bestScore);
+        }, 2000);
+    }
 }
 
 // ═══════════════════════════════════════════════════════
@@ -757,19 +774,23 @@ function initP2P(room) {
 // ═══════════════════════════════════════════════════════
 $('startBtn').onclick = () => {
     $('startBtn').disabled = true; $('stopBtn').disabled = false;
-    started = true;
+    started = true; paused = false;
     spawnFlock();
     worker.postMessage({ type: 'start' });
     log('Evolution started — fused Flappy Bird kernel on GPU', 'gpu');
 };
 $('stopBtn').onclick = () => {
     worker.postMessage({ type: 'stop' });
+    paused = true;
     $('startBtn').disabled = false; $('stopBtn').disabled = true;
     log('Paused', 'gpu');
 };
 $('p2pBtn').onclick = () => {
     const params = new URLSearchParams(window.location.search);
     initP2P(params.get('room') || 'flappy-demo');
+};
+$('speedSlider').oninput = () => {
+    $('speedLabel').textContent = $('speedSlider').value + '\u00D7';
 };
 
 // Auto-connect
