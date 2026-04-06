@@ -57,12 +57,21 @@ body{background:#0a0e1a;color:#c8d6e5;font-family:'Inter',system-ui,sans-serif;o
   <button id="startBtn" class="btn accent" disabled>Initializing GPU...</button>
   <button id="stopBtn" class="btn danger" disabled>Stop</button>
   <label style="display:inline-flex;align-items:center;gap:6px;margin-left:12px;color:#94a3b8;font-size:12px;">
-    Speed
-    <input type="range" id="speedSlider" min="1" max="10" value="2" style="width:80px;accent-color:#00d4aa;">
-    <span id="speedLabel" style="min-width:20px">2×</span>
+    Population
+    <select id="popSelect" style="background:#1e293b;color:#e2e8f0;border:1px solid #334155;border-radius:4px;padding:2px 6px;font-size:12px;font-family:monospace;">
+      <option value="512">512</option>
+      <option value="1024">1,024</option>
+      <option value="2048">2,048</option>
+      <option value="4096" selected>4,096</option>
+      <option value="8192">8,192</option>
+    </select>
   </label>
 </div>
 
+<p style="text-align:center;color:#64748b;font-size:11px;margin:0 0 8px;line-height:1.4;">
+  The birds below are a <strong style="color:#94a3b8">50-bird visual replay</strong> of the best brain found by the GPU.
+  The GPU silently evaluates <strong style="color:#00d4aa" id="popLabel">4,096</strong> birds per generation — you only see the result.
+</p>
 <div class="game-wrap">
   <canvas id="gameCanvas"></canvas>
   <div class="overlay overlay-tl">
@@ -110,7 +119,7 @@ body{background:#0a0e1a;color:#c8d6e5;font-family:'Inter',system-ui,sans-serif;o
 // ─── WGSL Shader: Flappy Bird physics + NN in one fused kernel ───
 const SHADER_CODE = `
 const NW: u32 = 22u;     // 5*3+3+3*1+1
-const MAX_TICKS: u32 = 800u;
+const MAX_TICKS: u32 = 4000u;
 const GRAVITY: f32 = 0.4;
 const JUMP_VEL: f32 = -6.5;
 const PIPE_GAP: f32 = 120.0;
@@ -161,12 +170,13 @@ fn run_episode(w: ptr<function, array<f32, 22>>) -> f32 {
     var pipe_idx: u32 = 0u;
     var alive: bool = true;
     var last_tick: u32 = 0u;
+    var centering_bonus: f32 = 0.0;
 
     for (var tick: u32 = 0u; tick < MAX_TICKS; tick++) {
         if (!alive) { break; }
         last_tick = tick;
 
-        // Advance pipe_idx past pipes the bird has passed (accounting for scroll)
+        // Advance pipe_idx past pipes the bird has passed
         for (var skip: u32 = 0u; skip < 3u; skip++) {
             let px = 300.0 + f32(pipe_idx) * PIPE_SPACING - f32(tick) * PIPE_SPEED;
             if (px + PIPE_WIDTH < BIRD_X && pipe_idx < 99u) {
@@ -176,6 +186,15 @@ fn run_episode(w: ptr<function, array<f32, 22>>) -> f32 {
         }
         let pipe_x = 300.0 + f32(pipe_idx) * PIPE_SPACING - f32(tick) * PIPE_SPEED;
         let gap_y = pipe_data[pipe_idx];
+        let gap_center = gap_y + PIPE_GAP_ACTUAL * 0.5;
+
+        // Gap centering: reward staying near the middle of the gap
+        // Strongest signal when bird is near the next pipe
+        let dist_to_pipe = clamp((pipe_x - BIRD_X) / PIPE_SPACING, 0.0, 1.0);
+        let proximity_weight = 1.0 - dist_to_pipe; // stronger as pipe approaches
+        let gap_dist = abs(bird_y - gap_center) / (PIPE_GAP_ACTUAL * 0.5);
+        let centering = (1.0 - clamp(gap_dist, 0.0, 1.0)) * proximity_weight;
+        centering_bonus += centering * 0.005;
 
         // NN inputs
         var inp: array<f32, 5>;
@@ -194,7 +213,7 @@ fn run_episode(w: ptr<function, array<f32, 22>>) -> f32 {
         // Floor / ceiling
         if (bird_y < BIRD_R || bird_y > GAME_H - BIRD_R) { alive = false; }
 
-        // Pipe collision — check current and next pipe
+        // Pipe collision
         for (var pc: u32 = 0u; pc < 2u; pc++) {
             let pi = pipe_idx + pc;
             if (pi >= 100u) { continue; }
@@ -207,11 +226,12 @@ fn run_episode(w: ptr<function, array<f32, 22>>) -> f32 {
             }
         }
     }
-    // Fitness: pipes passed + continuous progress toward next pipe
-    // This gives ES gradient signal BETWEEN pipes (not just integer jumps)
+    // Fitness: pipes (dominant) + survival + gap centering + progress toward next pipe
+    // Each component gives ES gradient signal at a different scale
     let next_pipe_x = 300.0 + f32(pipe_idx) * PIPE_SPACING - f32(last_tick) * PIPE_SPEED;
     let progress = 1.0 - clamp((next_pipe_x - BIRD_X) / PIPE_SPACING, 0.0, 1.0);
-    return score + progress * 0.9 + f32(last_tick) * 0.001;
+    let survival = f32(last_tick) / f32(MAX_TICKS); // 0..1, meaningful weight
+    return score * 5.0 + progress * 2.0 + survival * 3.0 + centering_bonus;
 }
 
 @compute @workgroup_size(64)
@@ -246,15 +266,32 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
 `;
 
 // ─── Engine constants ───
-const NW = 22, N = 4096, SIGMA = 0.15, LR = 0.03;
+let N = 4096;
+const NW = 22, SIGMA = 0.1, LR = 0.01;
+const ADAM_BETA1 = 0.9, ADAM_BETA2 = 0.999, ADAM_EPS = 1e-8;
 const GAME_H = 420, PIPE_GAP = 140, PIPE_SPACING = 200;
 
 let device, pipeline, bindGroupLayout;
 let weightsBuf, seedsBuf, paramsBuf, resultsBuf, readBuf, pipeBuf;
 let baseWeights = new Float32Array(NW);
-for (let i = 0; i < NW; i++) baseWeights[i] = (Math.random() - 0.5) * 1.0;
+for (let i = 0; i < NW; i++) baseWeights[i] = (Math.random() - 0.5) * 0.5;
 let foreignElite = null;
 let bestReward = 0, gen = 0;
+
+// Adam optimizer state
+const adam_m = new Float32Array(NW); // first moment
+const adam_v = new Float32Array(NW); // second moment
+let adam_t = 0;
+
+// Rank-based utility (OpenAI ES, Salimans et al. 2017)
+// Maps ranked fitness to a fixed utility distribution — eliminates outlier sensitivity
+function computeUtilities(n) {
+    const u = new Float32Array(n);
+    for (let i = 0; i < n; i++) u[i] = Math.max(0, Math.log(n / 2 + 1) - Math.log(i + 1));
+    const sum = u.reduce((a, b) => a + b, 0);
+    for (let i = 0; i < n; i++) u[i] = u[i] / sum - 1 / n;
+    return u;
+}
 
 // Pipe layout (shared with GPU)
 let pipeGaps = new Float32Array(100);
@@ -339,34 +376,61 @@ async function runGeneration() {
     const data = new Float32Array(readBuf.getMappedRange().slice(0));
     readBuf.unmap();
 
-    // CPU gradient reconstruction
-    const gradients = new Float32Array(NW);
-    let maxReward = 0;
-
+    // ─── Rank-normalized ES gradient (Salimans et al. 2017) ───
     const lcg = s => (s * 1664525 + 1013904223) >>> 0;
     const u2f = v => (v >>> 8) / 16777216;
     const bm = (u1, u2) => Math.sqrt(-2 * Math.log(Math.max(u1, 1e-10))) * Math.cos(6.2831853 * u2);
 
+    // Collect all 2N fitness values and rank them
+    const fitnesses = new Float32Array(2 * N);
+    let maxReward = 0;
     for (let i = 0; i < N; i++) {
-        const rPlus = data[i * 3], rMinus = data[i * 3 + 1], best = data[i * 3 + 2];
+        fitnesses[2 * i] = data[i * 3];       // r_plus
+        fitnesses[2 * i + 1] = data[i * 3 + 1]; // r_minus
+        const best = data[i * 3 + 2];
         if (best > maxReward) maxReward = best;
+    }
 
+    // Argsort by fitness descending
+    const indices = Array.from({ length: 2 * N }, (_, i) => i);
+    indices.sort((a, b) => fitnesses[b] - fitnesses[a]);
+
+    // Assign rank-based utilities
+    const utilities = computeUtilities(2 * N);
+    const ranked = new Float32Array(2 * N);
+    for (let rank = 0; rank < indices.length; rank++) {
+        ranked[indices[rank]] = utilities[rank];
+    }
+
+    // Reconstruct gradient using ranked utilities instead of raw fitness
+    const gradients = new Float32Array(NW);
+    for (let i = 0; i < N; i++) {
+        const uPlus = ranked[2 * i];
+        const uMinus = ranked[2 * i + 1];
         let seed = seedsData[i];
         for (let w = 0; w < NW; w++) {
             seed = lcg(seed); const u1 = u2f(seed);
             seed = lcg(seed); const u2 = u2f(seed);
-            gradients[w] += (rPlus - rMinus) * bm(u1, u2) * SIGMA;
+            gradients[w] += (uPlus - uMinus) * bm(u1, u2);
         }
     }
 
-    const alpha = LR / (N * SIGMA);
-    for (let w = 0; w < NW; w++) baseWeights[w] += alpha * gradients[w];
+    // ─── Adam optimizer (instead of vanilla SGD) ───
+    adam_t++;
+    for (let w = 0; w < NW; w++) {
+        const g = gradients[w] / N;
+        adam_m[w] = ADAM_BETA1 * adam_m[w] + (1 - ADAM_BETA1) * g;
+        adam_v[w] = ADAM_BETA2 * adam_v[w] + (1 - ADAM_BETA2) * g * g;
+        const mHat = adam_m[w] / (1 - Math.pow(ADAM_BETA1, adam_t));
+        const vHat = adam_v[w] / (1 - Math.pow(ADAM_BETA2, adam_t));
+        baseWeights[w] += LR * mHat / (Math.sqrt(vHat) + ADAM_EPS);
+    }
 
     gen++;
     if (maxReward > bestReward) bestReward = maxReward;
 
-    // New pipes every 100 gens — gives ES time to learn each layout before switching
-    if (gen % 100 === 0) regeneratePipes();
+    // New pipes every 500 gens — gives ES time to learn each layout before switching
+    if (gen % 500 === 0) regeneratePipes();
 
     return maxReward;
 }
@@ -391,6 +455,18 @@ self.onmessage = async (e) => {
         }
     }
     if (e.data.type === 'stop') { running = false; }
+    if (e.data.type === 'pop') {
+        // Reinitialize with new population size — requires stop + restart
+        N = e.data.n;
+        running = false;
+        // Recreate GPU buffers for new size
+        seedsBuf?.destroy(); resultsBuf?.destroy(); readBuf?.destroy();
+        seedsBuf = device.createBuffer({ size: N * 4, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST });
+        resultsBuf = device.createBuffer({ size: N * 12, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC });
+        readBuf = device.createBuffer({ size: N * 12, usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ });
+        device.queue.writeBuffer(paramsBuf, 0, new Float32Array([N, SIGMA, 0, 0]));
+        postMessage({ type: 'pop_ready', n: N });
+    }
     if (e.data.type === 'inject') { foreignElite = new Float32Array(e.data.genome); }
 };
 
@@ -634,11 +710,10 @@ function drawGame() {
         return;
     }
 
-    // Tick the flock — speed slider controls ticks per frame, freeze when paused
-    const ticksPerFrame = paused ? 0 : parseInt($('speedSlider').value) || 2;
-    let lastTick = { aliveCount: flock.filter(b => b.alive).length, bestAliveScore: Math.max(0, ...flock.map(b => b.score)) };
-    for (let t = 0; t < ticksPerFrame; t++) lastTick = tickFlock();
-    const { aliveCount, bestAliveScore } = lastTick;
+    // Tick the flock — freeze when paused, 2 ticks per frame otherwise
+    const { aliveCount, bestAliveScore } = paused
+        ? { aliveCount: flock.filter(b => b.alive).length, bestAliveScore: Math.max(0, ...flock.map(b => b.score)) }
+        : (() => { tickFlock(); return tickFlock(); })();
 
     // Draw pipes
     for (let i = 0; i < 100; i++) {
@@ -789,9 +864,21 @@ $('p2pBtn').onclick = () => {
     const params = new URLSearchParams(window.location.search);
     initP2P(params.get('room') || 'flappy-demo');
 };
-$('speedSlider').oninput = () => {
-    $('speedLabel').textContent = $('speedSlider').value + '\u00D7';
+$('popSelect').onchange = () => {
+    const n = parseInt($('popSelect').value);
+    worker.postMessage({ type: 'pop', n });
+    $('startBtn').disabled = true;
+    $('startBtn').textContent = 'Resizing...';
+    $('popLabel').textContent = n.toLocaleString();
+    log(`Population → ${n.toLocaleString()} birds per dispatch`, 'gpu');
 };
+worker.addEventListener('message', (e) => {
+    if (e.data.type === 'pop_ready') {
+        $('startBtn').disabled = false;
+        $('startBtn').textContent = 'Start Evolution';
+        log(`GPU buffers ready for ${e.data.n.toLocaleString()} birds`, 'gpu');
+    }
+});
 
 // Auto-connect
 const params = new URLSearchParams(window.location.search);
