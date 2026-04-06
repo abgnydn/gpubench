@@ -2,97 +2,63 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>P2P GPU Swarm Proof of Concept</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <title>Rastrigin P2P — Distributed GPU Optimization</title>
+    <link rel="stylesheet" href="demo-shared.css">
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            background: #0a0e1a;
-            color: #c8d6e5;
-            font-family: 'Inter', -apple-system, sans-serif;
-            padding: 32px 40px;
-        }
-        h1 { font-size: 1.5rem; font-weight: 700; color: #f1f5f9; letter-spacing: -0.02em; }
-        .subtitle { color: #64748b; font-size: 0.82rem; margin: 4px 0 24px; line-height: 1.5; }
-        .controls { margin-bottom: 20px; display: flex; gap: 10px; }
-        button {
-            font-family: 'Inter', sans-serif; font-weight: 600; font-size: 0.8rem;
-            padding: 9px 20px; border: none; border-radius: 6px; cursor: pointer;
-            transition: all 0.15s ease; letter-spacing: 0.01em;
-        }
-        .btn-primary { background: #00d4aa; color: #0a0e1a; }
-        .btn-primary:hover { background: #00f0c0; }
-        .btn-primary:disabled { background: #1e293b; color: #475569; cursor: default; }
-        .btn-secondary { background: #1e3a5f; color: #93c5fd; }
-        .btn-secondary:hover { background: #254d7a; }
-        .btn.outline { background: transparent; border: 1px solid #1e3a5f; color: #93c5fd; }
-        .btn.outline:hover:not(:disabled) { background: #1e3a5f; }
-        .btn.accent { background: #00d4aa; color: #0a0e1a; }
-        .btn.accent:hover:not(:disabled) { background: #00f0c0; }
-        .btn.danger { background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; }
-        .btn.danger:hover:not(:disabled) { background: #fecaca; }
-        .btn.shadow { box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); }
-        .btn:disabled { background: #1e293b; color: #475569; cursor: default; border-color: #1e293b; }
-        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-        .panel { background: #111827; border: 1px solid rgba(148, 163, 184, 0.08); border-radius: 10px; padding: 20px; }
-        .panel-header { font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: #64748b; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid rgba(148, 163, 184, 0.06); }
-        h2 { font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: #64748b; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid rgba(148, 163, 184, 0.06); }
-        .stat { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; font-size: 0.82rem; }
-        .stat-label { color: #64748b; }
-        .stat-value { font-family: 'JetBrains Mono', monospace; font-weight: 500; color: #00d4aa; font-size: 0.85rem; }
-        .stat-value.accent { color: #f59e0b; }
-        .stat-value.connected { color: #22c55e; }
-        .stat-value.neutral { color: #94a3b8; }
-        canvas { width: 100%; height: 180px; margin-top: 14px; border-radius: 6px; background: #0c1221; }
-        #log { background: #0c1221; border-radius: 6px; padding: 12px; height: 220px; overflow-y: auto; font-family: 'JetBrains Mono', monospace; font-size: 0.68rem; line-height: 1.7; color: #475569; margin-top: 14px; }
-        #log::-webkit-scrollbar { width: 4px; }
-        #log::-webkit-scrollbar-track { background: transparent; }
-        #log::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 2px; }
-        .log-p2p { color: #f59e0b; }
-        .log-fit { color: #00d4aa; }
-        .log-gpu { color: #a78bfa; }
-        .log-time { color: #334155; margin-right: 6px; }
-        .divider { height: 1px; background: rgba(148,163,184,0.06); margin: 4px 0; }
+    #meshCanvas{width:100%;height:100px;border-radius:6px;background:#0c1221;margin-top:10px}
     </style>
 </head>
 <body>
-    <h1>Evolving 4,096 AI Networks <span>Browser-Native GPU Proof of Concept v46</span></h1>
-    <div style="margin-bottom: 24px; display: flex; gap: 12px; justify-content: flex-end;">
-        <button id="p2pBtn" class="btn outline">Connect P2P Cluster</button>
-        <button id="startBtn" class="btn accent shadow" disabled>Initializing GPU...</button>
-        <button id="stopBtn" class="btn danger shadow" disabled>Stop Evolution</button>
+
+<div class="hero">
+    <h1>Rastrigin P2P Optimization</h1>
+    <p><span class="hl">4,096-population</span> evolutionary optimization on a <span class="hl">2,000-dimensional</span> multimodal landscape. Open multiple tabs to form a P2P swarm via WebRTC.</p>
+</div>
+
+<div class="controls">
+    <button id="p2pBtn" class="btn outline">Connect P2P</button>
+    <button id="startBtn" class="btn accent" disabled>Initializing GPU...</button>
+    <button id="stopBtn" class="btn danger" disabled>Stop</button>
+</div>
+
+<p class="explain">
+    GPU evaluates <strong class="hl-num">4,096</strong> candidate solutions per generation on a 2,000-dimensional Rastrigin function.
+    Goal: reach fitness &ge; -15,000. P2P exchanges elite solutions across tabs.
+</p>
+
+<div class="grid">
+    <div class="panel">
+        <div class="panel-header">Evolution Engine</div>
+        <div class="stat"><span class="stat-label">Backend</span><span class="stat-value neutral" id="gpuInfo">Initializing...</span></div>
+        <div class="stat"><span class="stat-label">Population</span><span class="stat-value neutral">4,096 networks</span></div>
+        <div class="stat"><span class="stat-label">Benchmark</span><span class="stat-value neutral">Rastrigin f(x), DIM=2,000</span></div>
+        <div class="divider"></div>
+        <div class="stat"><span class="stat-label">Generation</span><span class="stat-value" id="gen">0</span></div>
+        <div class="stat"><span class="stat-label">Best Fitness</span><span class="stat-value" id="fit">—</span></div>
+        <div class="stat"><span class="stat-label">Speed</span><span class="stat-value" id="speed">—</span></div>
+        <div class="divider"></div>
+        <div class="stat"><span class="stat-label">Goal</span><span class="stat-value neutral">Reach -15,000</span></div>
+        <div class="stat"><span class="stat-label">Time to Solve</span><span class="stat-value amber" id="solveTime">Ready</span></div>
+        <canvas id="chart" class="chart"></canvas>
     </div>
-    
-    <div class="grid">
-        <div class="panel">
-            <div class="panel-header">Local Evolution Engine</div>
-            <div class="stat"><span class="stat-label">Compute Backend</span><span class="stat-value">WebGPU / Metal Worker</span></div>
-            <div class="stat"><span class="stat-label">Population</span><span class="stat-value">4,096 networks</span></div>
-            <div class="stat"><span class="stat-label">Benchmark</span><span class="stat-value">Rastrigin f(x), 2,000 dimensions</span></div>
-            <div class="divider"></div>
-            <div class="stat"><span class="stat-label">Generation</span><span class="stat-value" id="gen">0</span></div>
-            <div class="stat"><span class="stat-label">Best Fitness</span><span class="stat-value" id="fit">—</span></div>
-            <div class="stat"><span class="stat-label">Throughput</span><span class="stat-value" id="speed">—</span></div>
-            <div class="divider"></div>
-            <div class="stat"><span class="stat-label">Benchmark Goal</span><span class="stat-value neutral">Reach -15000 (Rastrigin)</span></div>
-            <div class="stat"><span class="stat-label">Time to Solve</span><span class="stat-value accent" id="solveTime">Ready</span></div>
-            <canvas id="chart"></canvas>
+    <div class="panel">
+        <div class="panel-header">Peer-to-Peer Network</div>
+        <div class="stat"><span class="stat-label">Transport</span><span class="stat-value neutral">WebRTC DataChannel</span></div>
+        <div class="stat"><span class="stat-label">Status</span><span class="stat-value neutral" id="p2pStatus">Disconnected</span></div>
+        <div class="stat"><span class="stat-label">Room</span><span class="stat-value neutral" id="roomName">—</span></div>
+        <div class="divider"></div>
+        <div class="stat"><span class="stat-label">Genomes Sent</span><span class="stat-value amber" id="sent">0</span></div>
+        <div class="stat"><span class="stat-label">Genomes Received</span><span class="stat-value amber" id="recv">0</span></div>
+        <div class="stat"><span class="stat-label">Foreign Fitness</span><span class="stat-value neutral" id="foreignFit">—</span></div>
+        <canvas id="meshCanvas"></canvas>
+        <div class="divider"></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+            <span class="panel-header" style="margin:0">Event Log</span>
+            <button id="copyLogBtn" class="btn outline" style="padding:2px 8px;font-size:0.58rem">Copy Log</button>
         </div>
-        <div class="panel">
-            <h2>PEER-TO-PEER NETWORK</h2>
-            <div class="stat"><span class="stat-label">Transport</span><span class="stat-value neutral">WebRTC DataChannel</span></div>
-            <div class="stat"><span class="stat-label">Room</span><span class="stat-value" id="roomName">—</span></div>
-            <div class="stat"><span class="stat-label">Node ID</span><span class="stat-value" id="nodeId">—</span></div>
-            <div class="stat"><span class="stat-label">Signaling (WS)</span><span class="stat-value neutral" id="wsStatus">Disconnected</span></div>
-            <div class="stat"><span class="stat-label">Data Channel (WebRTC)</span><span class="stat-value neutral" id="p2pStatus">Disconnected</span></div>
-            <div class="divider"></div>
-            <div class="stat"><span class="stat-label">Genomes Sent</span><span class="stat-value accent" id="sent">0</span></div>
-            <div class="stat"><span class="stat-label">Genomes Received</span><span class="stat-value accent" id="recv">0</span></div>
-            <div class="stat"><span class="stat-label">Foreign Elite Fitness</span><span class="stat-value accent" id="foreignFit">—</span></div>
-            <canvas id="meshCanvas" style="width:100%;height:100px;margin-top:10px;border-radius:6px;background:#0c1221;"></canvas>
-            <div id="log"></div>
-        </div>
+        <div class="log" id="log"></div>
     </div>
+</div>
 
 <script src="device-telemetry.js"></script>
 <script src="swarm-p2p.js"></script>
@@ -111,9 +77,11 @@ const engine = new Worker('engine.js?v=' + Date.now());
 engine.onmessage = (e) => {
     const msg = e.data;
     if (msg.type === 'ready') {
-        const btn = document.getElementById('startBtn');
-        btn.disabled = false;
-        btn.textContent = 'Start Evolution';
+        document.getElementById('startBtn').disabled = false;
+        document.getElementById('startBtn').textContent = 'Start Evolution';
+        document.getElementById('gpuInfo').textContent = 'WebGPU — ' + (msg.gpu || 'Ready');
+        document.getElementById('gpuInfo').className = 'stat-value';
+        log('GPU pipeline ready — 4,096 solutions per dispatch (fused kernel)', 'gpu');
     } else if (msg.type === 'error') {
         log('WebGPU Error: ' + msg.error, 'warn');
         document.getElementById('startBtn').textContent = 'GPU Error';
@@ -401,22 +369,30 @@ function startEvolution() {
     }
 }
 
-document.getElementById('startBtn').onclick = startEvolution;
+document.getElementById('startBtn').onclick = () => {
+    startEvolution();
+    document.getElementById('startBtn').disabled = true;
+    document.getElementById('stopBtn').disabled = false;
+};
 document.getElementById('stopBtn').onclick = () => {
     engine.postMessage({ type: 'stop' });
     hasStarted = false;
     document.getElementById('startBtn').disabled = false;
-    document.getElementById('startBtn').textContent = 'Resume Evolution';
+    document.getElementById('startBtn').textContent = 'Resume';
     document.getElementById('stopBtn').disabled = true;
-    log('Evolution halted by user.', 'warn');
+    log('Paused', 'gpu');
 };
 document.getElementById('p2pBtn').onclick = () => {
     if (window._p2p) return;
-    const sig = prompt('Signaling Server URI:', SwarmP2P.DEFAULT_RELAY);
-    if (sig) {
-        const room = prompt('Room Name:', 'demo-room');
-        if (room) connectP2P(sig, room);
-    }
+    const room = params.get('room') || 'rastrigin-demo';
+    connectP2P(SwarmP2P.DEFAULT_RELAY, room);
+};
+document.getElementById('copyLogBtn').onclick = () => {
+    const text = Array.from(document.getElementById('log').children).map(d => d.textContent).join('\n');
+    navigator.clipboard.writeText(text).then(() => {
+        document.getElementById('copyLogBtn').textContent = 'Copied!';
+        setTimeout(() => document.getElementById('copyLogBtn').textContent = 'Copy Log', 1500);
+    });
 };
 
 // ─── Auto-connect P2P via URL params ───

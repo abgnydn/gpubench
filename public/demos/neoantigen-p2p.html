@@ -4,109 +4,87 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Neoantigen P2P Swarm — Multi-Allele MHC-I Evolution</title>
+<link rel="stylesheet" href="demo-shared.css">
 <style>
-* { margin: 0; padding: 0; box-sizing: border-box; }
-body { background: #0a0a0f; color: #e0e0e0; font-family: 'Menlo', 'Consolas', monospace; padding: 16px; }
-h1 { color: #cc44ff; font-size: 1.3em; }
-.subtitle { color: #666; font-size: 0.8em; margin-bottom: 16px; }
-.grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; max-width: 1400px; }
-.panel { background: #111118; border: 1px solid #222; border-radius: 8px; padding: 14px; }
-.panel h2 { font-size: 0.9em; margin-bottom: 10px; border-bottom: 1px solid #222; padding-bottom: 4px; }
-.h-evo { color: #cc44ff; } .h-p2p { color: #00aaff; } .h-seq { color: #00ff88; }
-.stat-row { display: flex; justify-content: space-between; margin: 4px 0; font-size: 0.85em; }
-.stat-label { color: #888; } .stat-value { color: #fff; font-weight: bold; }
-.good { color: #00ff88; } .warn { color: #ffaa00; } .connected { color: #00aaff; } .neutral { color: #888; }
-button { background: #7722aa; color: #fff; border: none; padding: 8px 20px; border-radius: 6px; cursor: pointer; font-family: inherit; margin-right: 8px; }
-button:hover { background: #9933cc; } button:disabled { background: #333; color: #666; }
-button.stop { background: #aa3333; }
-.controls { margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
-select { background: #222; color: #e0e0e0; border: 1px solid #444; padding: 6px 10px; border-radius: 4px; font-family: inherit; }
-.seq-display { background: #0a0a12; border: 1px solid #333; border-radius: 6px; padding: 12px; font-size: 1.6em; letter-spacing: 4px; text-align: center; margin: 8px 0; }
-.seq-display .anchor { color: #cc44ff; font-weight: bold; text-decoration: underline; }
-.seq-display .tcr { color: #ff8800; }
-.chart-container { height: 150px; background: #0a0a12; border-radius: 4px; }
-canvas { width: 100%; height: 100%; }
-.status { color: #666; font-size: 0.85em; } .status.running { color: #cc44ff; }
-.log { background: #0a0a12; border: 1px solid #222; border-radius: 4px; padding: 8px; font-size: 0.7em; max-height: 160px; overflow-y: auto; color: #888; }
-.log .p2p { color: #00aaff; } .log .fit { color: #00ff88; } .log .err { color: #ff4444; } .log .cross { color: #cc44ff; }
-.allele-tag { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.75em; font-weight: bold; }
-.full-width { grid-column: 1 / -1; }
-.top-item { display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px solid #1a1a22; font-size: 0.8em; }
-.top-seq { letter-spacing: 1px; color: #ddd; } .top-fit { color: #00ff88; }
-.cross-allele { background: #1a0a22; border: 1px solid #333; border-radius: 4px; padding: 8px; margin-top: 8px; }
-.cross-allele h3 { font-size: 0.8em; color: #cc44ff; margin-bottom: 6px; }
-.cross-item { font-size: 0.75em; margin: 2px 0; }
+.seq-display{background:#0c1221;border-radius:6px;padding:12px;font-family:'JetBrains Mono',monospace;font-size:1.6em;letter-spacing:4px;text-align:center;margin:8px 0}
+.seq-display .anchor{color:#00d4aa;font-weight:bold;text-decoration:underline}
+.seq-display .tcr{color:#f59e0b}
+.top-item{display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid rgba(148,163,184,0.06);font-size:0.8em}
+.top-seq{letter-spacing:1px;color:#e2e8f0;font-family:'JetBrains Mono',monospace}.top-fit{color:#00d4aa}
+.cross-allele{background:rgba(0,212,170,0.05);border:1px solid rgba(0,212,170,0.1);border-radius:6px;padding:8px;margin-top:8px}
+.cross-allele h3{font-size:0.72rem;color:#00d4aa;margin-bottom:6px;font-weight:600}
+.cross-item{font-size:0.72rem;margin:2px 0;color:#94a3b8}
 </style>
 </head>
 <body>
 
-<h1>Neoantigen P2P Swarm — Multi-Allele MHC-I Evolution</h1>
-<p class="subtitle">6 HLA alleles as islands | Elite exchange finds broadly immunogenic peptides | WebRTC + WS relay</p>
-
-<div class="controls">
-    <button id="startBtn" disabled>Start Evolution</button>
-    <button id="stopBtn" class="stop" disabled>Stop</button>
-    <label style="color:#888;font-size:0.85em">HLA Allele:</label>
-    <select id="alleleSelect">
-        <option value="0">HLA-A*02:01 (P2:L/M P9:V/L)</option>
-        <option value="1">HLA-A*03:01 (P2:L/M P9:K/R)</option>
-        <option value="2">HLA-B*07:02 (P2:P P9:L)</option>
-        <option value="3">HLA-B*08:01 (P2:R P9:L)</option>
-    </select>
-    <span class="allele-tag" id="alleleTag" style="background:#cc44ff;color:#fff">HLA-A*02:01</span>
-    <span class="status" id="status">Initializing...</span>
+<div class="hero">
+    <h1>Neoantigen P2P Swarm</h1>
+    <p>Multi-allele MHC-I peptide evolution via <span class="hl">WebGPU kernel fusion</span> + <span class="hl">WebRTC P2P</span>. Each tab evolves peptides for a different HLA allele. P2P exchange finds broadly immunogenic candidates.</p>
 </div>
 
-<div class="grid">
-    <!-- Best Peptide -->
-    <div class="panel full-width">
-        <h2 class="h-evo">Best Neoantigen — <span id="alleleName">HLA-A*02:01</span></h2>
+<div class="controls">
+    <button id="p2pBtn" class="btn outline">Connect P2P</button>
+    <button id="startBtn" class="btn accent" disabled>Initializing GPU...</button>
+    <button id="stopBtn" class="btn danger" disabled>Stop</button>
+    <label class="ctrl-label">
+        HLA Allele
+        <select id="alleleSelect" class="ctrl-select">
+            <option value="0">HLA-A*02:01</option>
+            <option value="1">HLA-A*03:01</option>
+            <option value="2">HLA-B*07:02</option>
+            <option value="3">HLA-B*08:01</option>
+        </select>
+    </label>
+    <span class="config-tag" id="alleleTag" style="background:rgba(0,212,170,0.15);color:#00d4aa">HLA-A*02:01</span>
+</div>
+
+<p class="explain">
+    GPU evaluates <strong class="hl-num">4,096</strong> peptide candidates per generation.
+    Each tab targets a different HLA allele. P2P exchanges top candidates to find cross-allele binders.
+</p>
+
+<div class="grid" style="grid-template-columns:1fr 1fr">
+    <div class="panel" style="grid-column:1/-1">
+        <div class="panel-header">Best Neoantigen — <span id="alleleName">HLA-A*02:01</span></div>
         <div class="seq-display" id="bestSeq">— — — — — — — — —</div>
-        <div style="text-align:center;font-size:0.7em;color:#555;letter-spacing:4px">P1 P2 P3 P4 P5 P6 P7 P8 P9</div>
+        <div style="text-align:center;font-size:0.62rem;color:#475569;letter-spacing:4px">P1 P2 P3 P4 P5 P6 P7 P8 P9</div>
     </div>
 
-    <!-- Evolution Stats -->
     <div class="panel">
-        <h2 class="h-evo">Evolution</h2>
-        <div class="stat-row"><span class="stat-label">Generation</span><span class="stat-value" id="gen">0</span></div>
-        <div class="stat-row"><span class="stat-label">Fitness</span><span class="stat-value good" id="fit">0.00</span></div>
-        <div class="stat-row"><span class="stat-label">Speed</span><span class="stat-value" id="speed">—</span></div>
-        <div class="stat-row"><span class="stat-label">P2 Anchor</span><span class="stat-value" id="p2anchor">—</span></div>
-        <div class="stat-row"><span class="stat-label">P9 Anchor</span><span class="stat-value" id="p9anchor">—</span></div>
-        <div class="stat-row"><span class="stat-label">Net Charge</span><span class="stat-value" id="netCharge">—</span></div>
-    </div>
-
-    <!-- P2P Stats -->
-    <div class="panel">
-        <h2 class="h-p2p">P2P Network</h2>
-        <div class="stat-row"><span class="stat-label">Signaling</span><span class="stat-value neutral" id="wsStatus">—</span></div>
-        <div class="stat-row"><span class="stat-label">P2P Status</span><span class="stat-value neutral" id="p2pStatus">—</span></div>
-        <div class="stat-row"><span class="stat-label">Room</span><span class="stat-value neutral" id="roomName">—</span></div>
-        <div class="stat-row"><span class="stat-label">Node ID</span><span class="stat-value neutral" id="nodeId">—</span></div>
-        <div class="stat-row"><span class="stat-label">Elites Sent</span><span class="stat-value" id="sent">0</span></div>
-        <div class="stat-row"><span class="stat-label">Elites Received</span><span class="stat-value" id="recv">0</span></div>
-        <div class="stat-row"><span class="stat-label">Cross-Allele Hits</span><span class="stat-value good" id="crossHits">0</span></div>
-    </div>
-
-    <!-- Top Candidates + Cross-Allele -->
-    <div class="panel">
-        <h2 class="h-seq">Top Candidates</h2>
-        <div id="topList" style="max-height:120px;overflow-y:auto;font-size:0.8em">—</div>
+        <div class="panel-header">Evolution Engine</div>
+        <div class="stat"><span class="stat-label">Backend</span><span class="stat-value neutral" id="gpuInfo">Initializing...</span></div>
+        <div class="stat"><span class="stat-label">Generation</span><span class="stat-value" id="gen">0</span></div>
+        <div class="stat"><span class="stat-label">Fitness</span><span class="stat-value" id="fit">0.00</span></div>
+        <div class="stat"><span class="stat-label">Speed</span><span class="stat-value" id="speed">—</span></div>
+        <div class="stat"><span class="stat-label">P2 Anchor</span><span class="stat-value" id="p2anchor">—</span></div>
+        <div class="stat"><span class="stat-label">P9 Anchor</span><span class="stat-value" id="p9anchor">—</span></div>
+        <div class="stat"><span class="stat-label">Net Charge</span><span class="stat-value" id="netCharge">—</span></div>
+        <div class="divider"></div>
+        <div class="panel-header">Top Candidates</div>
+        <div id="topList" style="max-height:100px;overflow-y:auto;font-size:0.75rem">—</div>
         <div class="cross-allele">
             <h3>Cross-Allele Binders</h3>
-            <div id="crossList" style="max-height:80px;overflow-y:auto">None yet</div>
+            <div id="crossList" style="max-height:60px;overflow-y:auto">None yet</div>
         </div>
+        <div class="divider"></div>
+        <canvas id="chart" class="chart"></canvas>
     </div>
 
-    <!-- Chart -->
     <div class="panel">
-        <h2 class="h-evo">Fitness History</h2>
-        <div class="chart-container"><canvas id="chart"></canvas></div>
-    </div>
-
-    <!-- Log -->
-    <div class="panel">
-        <h2 class="h-p2p">Event Log</h2>
+        <div class="panel-header">Peer-to-Peer Network</div>
+        <div class="stat"><span class="stat-label">Transport</span><span class="stat-value neutral">WebRTC DataChannel</span></div>
+        <div class="stat"><span class="stat-label">Status</span><span class="stat-value neutral" id="p2pStatus">Disconnected</span></div>
+        <div class="stat"><span class="stat-label">Room</span><span class="stat-value neutral" id="roomName">—</span></div>
+        <div class="divider"></div>
+        <div class="stat"><span class="stat-label">Genomes Sent</span><span class="stat-value amber" id="sent">0</span></div>
+        <div class="stat"><span class="stat-label">Genomes Received</span><span class="stat-value amber" id="recv">0</span></div>
+        <div class="stat"><span class="stat-label">Cross-Allele Hits</span><span class="stat-value" id="crossHits">0</span></div>
+        <div class="divider"></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+            <span class="panel-header" style="margin:0">Event Log</span>
+            <button id="copyLogBtn" class="btn outline" style="padding:2px 8px;font-size:0.58rem">Copy Log</button>
+        </div>
         <div class="log" id="log"></div>
     </div>
 </div>
@@ -328,10 +306,10 @@ engine.onmessage = (e) => {
     const d = e.data;
     if (d.type === 'ready') {
         document.getElementById('startBtn').disabled = false;
-        document.getElementById('status').textContent = 'Ready';
-        const sig = params.get('sig') || SwarmP2P.DEFAULT_RELAY;
-        const room = params.get('room') || 'neoantigen-swarm';
-        p2p = new P2P(sig, room);
+        document.getElementById('startBtn').textContent = 'Start Evolution';
+        document.getElementById('gpuInfo').textContent = 'WebGPU — ' + (d.gpu || 'Ready');
+        document.getElementById('gpuInfo').className = 'stat-value';
+        log('GPU pipeline ready — 4,096 peptides per dispatch (fused kernel)', 'gpu');
     } else if (d.type === 'stats') {
         document.getElementById('gen').textContent = d.gen.toLocaleString();
         document.getElementById('fit').textContent = d.bestFit.toFixed(2);
@@ -381,16 +359,27 @@ document.getElementById('startBtn').onclick = () => {
     t0 = performance.now();
     document.getElementById('startBtn').disabled = true;
     document.getElementById('stopBtn').disabled = false;
-    document.getElementById('status').textContent = 'Evolving...';
-    document.getElementById('status').className = 'status running';
     log('Evolution started (' + ALLELE_NAMES[currentAllele] + ')', 'fit');
 };
 document.getElementById('stopBtn').onclick = () => {
     engine.postMessage({ type: 'stop' });
     document.getElementById('startBtn').disabled = false;
     document.getElementById('stopBtn').disabled = true;
-    document.getElementById('status').textContent = 'Stopped';
-    document.getElementById('status').className = 'status';
+    log('Paused', 'gpu');
+};
+document.getElementById('p2pBtn').onclick = () => {
+    if (p2p) return;
+    const room = params.get('room') || 'neoantigen-swarm';
+    p2p = new P2P(SwarmP2P.DEFAULT_RELAY, room);
+    document.getElementById('p2pBtn').textContent = 'Connecting...';
+    document.getElementById('p2pBtn').disabled = true;
+};
+document.getElementById('copyLogBtn').onclick = () => {
+    const text = Array.from(document.getElementById('log').children).map(d => d.textContent).join('\n');
+    navigator.clipboard.writeText(text).then(() => {
+        document.getElementById('copyLogBtn').textContent = 'Copied!';
+        setTimeout(() => document.getElementById('copyLogBtn').textContent = 'Copy Log', 1500);
+    });
 };
 
 if (params.get('autostart') === '1') {

@@ -1,0 +1,65 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0e1a;color:#c8d6e5;font-family:'Inter',system-ui,sans-serif;overflow-x:hidden}
+
+/* Hero */
+.hero{text-align:center;padding:24px 20px 12px}
+.hero h1{font-size:1.5rem;font-weight:700;letter-spacing:-0.02em;color:#f1f5f9}
+.hero p{font-size:0.82rem;color:#94a3b8;margin-top:4px;max-width:620px;margin-left:auto;margin-right:auto;line-height:1.5}
+.hl{color:#00d4aa;font-weight:600}
+
+/* Controls bar */
+.controls{display:flex;gap:10px;justify-content:center;margin:10px 0 8px;flex-wrap:wrap;align-items:center}
+.btn{font-family:'Inter',sans-serif;font-size:0.76rem;font-weight:600;padding:8px 18px;border:none;border-radius:6px;cursor:pointer;transition:all 0.15s}
+.btn:disabled{opacity:0.4;cursor:default}
+.accent{background:#00d4aa;color:#0a0e1a}.accent:hover:not(:disabled){background:#00f0c0}
+.outline{background:transparent;border:1px solid #334155;color:#94a3b8}.outline:hover:not(:disabled){border-color:#00d4aa;color:#00d4aa}
+.danger{background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5}
+.ctrl-label{display:inline-flex;align-items:center;gap:6px;color:#94a3b8;font-size:12px}
+.ctrl-select{background:#1e293b;color:#e2e8f0;border:1px solid #334155;border-radius:4px;padding:2px 6px;font-size:12px;font-family:'JetBrains Mono',monospace}
+
+/* Explanation text */
+.explain{text-align:center;color:#64748b;font-size:11px;margin:0 0 8px;line-height:1.4;padding:0 20px}
+.explain strong{color:#94a3b8}
+.explain .hl-num{color:#00d4aa;font-family:'JetBrains Mono',monospace;font-weight:600}
+
+/* Grid layout */
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:12px 20px;max-width:900px;margin-left:auto;margin-right:auto}
+.panel{background:#111827;border:1px solid rgba(148,163,184,0.08);border-radius:10px;padding:14px}
+.panel-header{font-size:0.62rem;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:#475569;margin-bottom:8px}
+
+/* Stats */
+.stat{display:flex;justify-content:space-between;padding:3px 0;font-size:0.76rem}
+.stat-label{color:#64748b}
+.stat-value{font-family:'JetBrains Mono',monospace;font-weight:500;color:#00d4aa}
+.stat-value.amber{color:#f59e0b}
+.stat-value.neutral{color:#94a3b8}
+.stat-value.connected{color:#22c55e}
+.divider{border-top:1px solid rgba(148,163,184,0.06);margin:6px 0}
+
+/* Chart */
+canvas.chart{width:100%;height:120px;background:#0c1221;border-radius:6px;margin-top:10px}
+
+/* Log */
+.log{background:#0c1221;border-radius:6px;padding:8px;height:150px;overflow-y:auto;font-family:'JetBrains Mono',monospace;font-size:0.6rem;line-height:1.6;color:#64748b;margin-top:10px}
+.log::-webkit-scrollbar{width:3px}.log::-webkit-scrollbar-thumb{background:#1e293b;border-radius:2px}
+.log-p2p{color:#f59e0b}.log-fit{color:#00d4aa}.log-gpu{color:#a78bfa}.log-time{color:#475569}
+
+/* Game canvas (flappy) */
+.game-wrap{position:relative;margin:0 auto;max-width:900px}
+.game-canvas{display:block;width:100%;height:420px;background:#0c1221;border:1px solid rgba(148,163,184,0.06);border-radius:8px}
+.overlay{position:absolute;pointer-events:none}
+.overlay-tl{top:10px;left:14px}
+.overlay-tr{top:10px;right:14px}
+.score-big{font-family:'JetBrains Mono',monospace;font-size:2.2rem;font-weight:700;color:#00d4aa;text-shadow:0 2px 16px rgba(0,212,170,0.3)}
+.gen-label{font-size:0.7rem;color:#64748b;margin-top:1px}
+.alive-badge{font-family:'JetBrains Mono',monospace;font-size:0.85rem;padding:4px 10px;background:rgba(0,212,170,0.12);border:1px solid rgba(0,212,170,0.2);border-radius:20px;color:#00d4aa}
+.p2p-flash{font-family:'JetBrains Mono',monospace;font-size:0.72rem;color:#f59e0b;opacity:0;transition:opacity 0.3s;margin-top:6px}
+.p2p-flash.show{opacity:1}
+
+/* Domain-specific panels */
+.seq-box{background:#0c1221;border-radius:6px;padding:8px;font-family:'JetBrains Mono',monospace;font-size:0.72rem;letter-spacing:0.5px;line-height:1.6;word-break:break-all;margin:4px 0}
+.config-tag{font-family:'JetBrains Mono',monospace;font-size:0.62rem;padding:2px 8px;border-radius:10px;margin-left:6px}
+
+/* Responsive */
+@media(max-width:700px){.grid{grid-template-columns:1fr}.game-canvas{height:320px}}
