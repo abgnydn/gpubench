@@ -388,7 +388,7 @@ export default function HomePage() {
         {/* Open data */}
         <div className="card border-bench-accent/10 mt-4">
           <div className="flex items-start gap-3">
-            <span className="text-xl">&#x1F4CA;</span>
+            <svg className="w-5 h-5 text-bench-accent flex-shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
             <div className="flex-1">
               <h3 className="font-semibold text-bench-text text-sm mb-1">Every result is public</h3>
               <p className="text-xs text-bench-muted leading-relaxed mb-2">
