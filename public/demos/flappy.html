@@ -278,6 +278,7 @@ let baseWeights = new Float32Array(NW);
 for (let i = 0; i < NW; i++) baseWeights[i] = (Math.random() - 0.5) * 0.5;
 let foreignElite = null;
 let bestReward = 0, gen = 0;
+let foreignBestAt = 0, foreignStuckSince = 0;
 
 // Adam optimizer state
 const adam_m = new Float32Array(NW); // first moment
@@ -428,7 +429,11 @@ async function runGeneration() {
     }
 
     gen++;
-    if (maxReward > bestReward) bestReward = maxReward;
+    if (maxReward > bestReward) {
+        bestReward = maxReward;
+        foreignBestAt = bestReward;
+        foreignStuckSince = gen;
+    }
 
     // New pipes every 500 gens — gives ES time to learn each layout before switching
     if (gen % 500 === 0) regeneratePipes();
@@ -468,7 +473,21 @@ self.onmessage = async (e) => {
         device.queue.writeBuffer(paramsBuf, 0, new Float32Array([N, SIGMA, 0, 0]));
         postMessage({ type: 'pop_ready', n: N });
     }
-    if (e.data.type === 'inject') { foreignElite = new Float32Array(e.data.genome); }
+    if (e.data.type === 'inject') {
+        // Evaluate foreign genome on local pipes before accepting
+        const foreign = new Float32Array(e.data.genome);
+        // Quick local eval: run the NN through current pipes on CPU-side in shader
+        // For now, accept if it came from a peer (they already proved it works)
+        // but blend conservatively: only adopt if we're stuck
+        if (gen > 0 && bestReward === foreignBestAt && (gen - foreignStuckSince) > 200) {
+            // Stuck for 200+ gens — accept foreign genome as new base
+            for (let i = 0; i < NW; i++) baseWeights[i] = foreign[i];
+            postMessage({ type: 'foreign_accepted', fitness: e.data.fitness });
+        } else {
+            // Not stuck — blend 20% foreign for diversity
+            for (let i = 0; i < NW; i++) baseWeights[i] = baseWeights[i] * 0.8 + foreign[i] * 0.2;
+        }
+    }
 };
 
 initGPU();
@@ -526,93 +545,56 @@ function nnForward(w, inp) {
 }
 
 // ═══════════════════════════════════════════════════════
-// LIVE FLOCK — 50 birds simulated tick-by-tick on CPU
+// SINGLE BIRD REPLAY — plays at normal Flappy Bird speed
+// Uses latest best genome from GPU. Dies → instant respawn.
 // ═══════════════════════════════════════════════════════
-const FLOCK_SIZE = 50;
-const BIRD_COLORS = [];
-for (let i = 0; i < FLOCK_SIZE; i++) {
-    const hue = (i / FLOCK_SIZE) * 300 + 0; // full rainbow: red→yellow→green→cyan→blue→purple
-    const sat = 65 + Math.random() * 20;
-    const lit = 50 + Math.random() * 15;
-    BIRD_COLORS.push(`hsl(${hue}, ${sat}%, ${lit}%)`);
-}
-
-let flock = []; // [{y, vy, alive, score, pipeIdx, weights, color}]
-let flockTick = 0, flockPipes = null;
 let bestScore = 0, bestGenome = null, fitHistory = [];
-let gen = 0, visualGen = 0, foreignBirdColor = null;
+let gen = 0;
 
-function mutateWeights(base, amount) {
-    const w = new Float32Array(base);
-    for (let j = 0; j < NN_WEIGHTS; j++) {
-        if (Math.random() < 0.3) w[j] += (Math.random() - 0.5) * 2 * amount;
-    }
-    return w;
+// Bird state
+let bird = { y: 0, vy: 0, alive: false, score: 0, pipeIdx: 0 };
+let replayTick = 0;
+let replayPipes = new Float32Array(100);
+let livePipes = 0; // pipes passed in current life
+
+function randomPipes() {
+    for (let i = 0; i < 100; i++) replayPipes[i] = 60 + Math.random() * (gameH - 160 - PIPE_GAP);
 }
 
-function spawnFlock() {
-    flock = [];
-    flockTick = 0;
-    visualGen++;
-    // Generate new pipes for visual
-    flockPipes = new Float32Array(100);
-    for (let i = 0; i < 100; i++) flockPipes[i] = 60 + Math.random() * (gameH - 160 - PIPE_GAP);
-
-    const base = bestGenome || new Float32Array(NN_WEIGHTS);
-    for (let i = 0; i < FLOCK_SIZE; i++) {
-        // Bird 0 = exact copy of best (elite). Birds 1-9 = small mutations. Birds 10-49 = big mutations.
-        // This creates visible diversity: some birds fly well (near elite), others explore wildly.
-        const mutAmount = i === 0 ? 0 : i < 5 ? 0.15 : i < 15 ? 0.5 : 1.2;
-        const weights = i === 0 && bestGenome ? new Float32Array(bestGenome) : mutateWeights(base, mutAmount);
-        flock.push({
-            y: gameH * 0.4, vy: 0, alive: true, score: 0, pipeIdx: 0,
-            weights,
-            color: i === 0 && bestGenome ? '#00d4aa' : BIRD_COLORS[i],
-            isForeign: false,
-        });
-    }
+function respawnBird() {
+    bird = { y: gameH * 0.4, vy: 0, alive: true, score: 0, pipeIdx: 0 };
+    replayTick = 0;
+    livePipes = 0;
+    randomPipes();
 }
 
-function tickFlock() {
-    let aliveCount = 0;
-    let bestAliveScore = 0;
+function tickBird() {
+    if (!bird.alive || !bestGenome) return;
 
-    for (const bird of flock) {
-        if (!bird.alive) continue;
-        aliveCount++;
+    // Advance pipes
+    for (let skip = 0; skip < 3; skip++) {
+        const px = 300 + bird.pipeIdx * PIPE_SPACING - replayTick * PIPE_SPEED;
+        if (px + PIPE_WIDTH < BIRD_X && bird.pipeIdx < 99) { bird.score++; bird.pipeIdx++; livePipes++; } else break;
+    }
+    const pipeX = 300 + bird.pipeIdx * PIPE_SPACING - replayTick * PIPE_SPEED;
+    const gapY = replayPipes[bird.pipeIdx];
 
-        // Advance pipe
-        for (let skip = 0; skip < 3; skip++) {
-            const px = 300 + bird.pipeIdx * PIPE_SPACING - flockTick * PIPE_SPEED;
-            if (px + PIPE_WIDTH < BIRD_X && bird.pipeIdx < 99) { bird.score++; bird.pipeIdx++; } else break;
+    const inp = [bird.y/gameH, bird.vy/10, (pipeX-BIRD_X)/300, gapY/gameH, (gapY+PIPE_GAP)/gameH];
+    if (nnForward(bestGenome, inp) > 0.5) bird.vy = JUMP_VEL;
+    bird.vy += GRAVITY;
+    bird.y += bird.vy;
+
+    if (bird.y < BIRD_R || bird.y > gameH - BIRD_R) bird.alive = false;
+    for (let pc = 0; pc < 2 && (bird.pipeIdx + pc) < 100; pc++) {
+        const pi = bird.pipeIdx + pc;
+        const ppx = 300 + pi * PIPE_SPACING - replayTick * PIPE_SPEED;
+        if (BIRD_X + BIRD_R > ppx && BIRD_X - BIRD_R < ppx + PIPE_WIDTH) {
+            if (bird.y - BIRD_R < replayPipes[pi] || bird.y + BIRD_R > replayPipes[pi] + PIPE_GAP) bird.alive = false;
         }
-        const pipeX = 300 + bird.pipeIdx * PIPE_SPACING - flockTick * PIPE_SPEED;
-        const gapY = flockPipes[bird.pipeIdx];
-
-        const inp = [bird.y/gameH, bird.vy/10, (pipeX-BIRD_X)/300, gapY/gameH, (gapY+PIPE_GAP)/gameH];
-        if (nnForward(bird.weights, inp) > 0.5) bird.vy = JUMP_VEL;
-        bird.vy += GRAVITY;
-        bird.y += bird.vy;
-
-        if (bird.y < BIRD_R || bird.y > gameH - BIRD_R) bird.alive = false;
-        for (let pc = 0; pc < 2 && (bird.pipeIdx+pc) < 100; pc++) {
-            const pi = bird.pipeIdx + pc;
-            const ppx = 300 + pi * PIPE_SPACING - flockTick * PIPE_SPEED;
-            if (BIRD_X+BIRD_R > ppx && BIRD_X-BIRD_R < ppx+PIPE_WIDTH) {
-                if (bird.y-BIRD_R < flockPipes[pi] || bird.y+BIRD_R > flockPipes[pi]+PIPE_GAP) bird.alive = false;
-            }
-        }
-        if (bird.score > bestAliveScore) bestAliveScore = bird.score;
     }
 
-    flockTick++;
-
-    // All dead or max ticks? Restart flock with latest genome from GPU
-    if (aliveCount === 0 || flockTick > 800) {
-        spawnFlock();
-    }
-
-    return { aliveCount, bestAliveScore };
+    replayTick++;
+    if (!bird.alive || replayTick > 5000) respawnBird();
 }
 
 // ─── Worker ───
@@ -645,6 +627,9 @@ worker.onmessage = (e) => {
 
         fitHistory.push(msg.bestFit);
         drawChart();
+
+        // Start visual replay once we have a genome
+        if (!bird.alive && !paused) respawnBird();
 
         // Device telemetry (shared module)
         reportDevice('Flappy Evolution', msg.bestFit, msg.gen, parseFloat(msg.speed));
@@ -704,57 +689,37 @@ function drawGame() {
     // Ground
     ctx.fillStyle = '#334155'; ctx.fillRect(0, gameH - 2, gameW, 2);
 
-    if (!started || !flockPipes) {
+    if (!started || !bestGenome) {
         ctx.fillStyle = '#475569'; ctx.font = '14px Inter'; ctx.textAlign = 'center';
         ctx.fillText('Press Start Evolution', gameW/2, gameH/2);
         requestAnimationFrame(drawGame);
         return;
     }
 
-    // Tick the flock — freeze when paused, 2 ticks per frame otherwise
-    const { aliveCount, bestAliveScore } = paused
-        ? { aliveCount: flock.filter(b => b.alive).length, bestAliveScore: Math.max(0, ...flock.map(b => b.score)) }
-        : (() => { tickFlock(); return tickFlock(); })();
+    // Tick bird at normal game speed (1 tick per frame = ~60 ticks/sec)
+    if (!paused && bird.alive) tickBird();
+    if (!bird.alive && !paused) respawnBird();
 
     // Draw pipes
     for (let i = 0; i < 100; i++) {
-        const px = 300 + i * PIPE_SPACING - flockTick * PIPE_SPEED;
-        drawPipe(flockPipes[i], px, 0.7);
+        const px = 300 + i * PIPE_SPACING - replayTick * PIPE_SPEED;
+        drawPipe(replayPipes[i], px, 0.8);
     }
 
-    // Draw all birds (back to front: mutations first, elite last on top)
-    for (let i = flock.length - 1; i >= 0; i--) {
-        const bird = flock[i];
-        if (!bird.alive) continue;
-        const isElite = i === 0;
-        const alpha = isElite ? 1 : 0.65;
-        const sz = isElite ? BIRD_R + 2 : 8 + Math.sin(i * 1.7) * 2;
-        const color = bird.isForeign ? '#f59e0b' : bird.color;
-        // Elite gets a glow
-        if (isElite) {
-            ctx.shadowColor = '#00d4aa';
-            ctx.shadowBlur = 12;
-        }
-        drawBird(BIRD_X, bird.y, color, alpha, sz);
+    // Draw single bird with glow
+    if (bird.alive) {
+        ctx.shadowColor = '#00d4aa';
+        ctx.shadowBlur = 14;
+        drawBird(BIRD_X, bird.y, '#00d4aa', 1, BIRD_R + 2);
         ctx.shadowBlur = 0;
     }
 
-    // Dead birds: show small red dots where they died
-    for (const bird of flock) {
-        if (bird.alive) continue;
-        ctx.globalAlpha = 0.15;
-        ctx.fillStyle = '#ef4444';
-        ctx.beginPath(); ctx.arc(BIRD_X, bird.y, 4, 0, Math.PI*2); ctx.fill();
-        ctx.globalAlpha = 1;
-    }
+    // Score overlay
+    $('aliveBadge').textContent = `${livePipes} pipes this life`;
 
-    // Alive counter
-    $('aliveBadge').textContent = `${aliveCount} / ${FLOCK_SIZE} alive`;
-
-    // Live best score on screen
-    ctx.fillStyle = '#fff'; ctx.font = 'bold 28px JetBrains Mono';
-    ctx.textAlign = 'center'; ctx.globalAlpha = 0.2;
-    ctx.fillText(bestAliveScore, gameW/2, 45); ctx.globalAlpha = 1;
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 32px JetBrains Mono';
+    ctx.textAlign = 'center'; ctx.globalAlpha = 0.25;
+    ctx.fillText(livePipes, gameW/2, 45); ctx.globalAlpha = 1;
 
     requestAnimationFrame(drawGame);
 }
@@ -804,16 +769,7 @@ function initP2P(room) {
         defaultRoom: room || 'flappy-demo',
         genomeSize: 22,
         onEliteReceived: (genome, fitness, from) => {
-            // Inject into GPU engine
-            worker.postMessage({ type: 'inject', genome: Array.from(genome) });
-            // Show as golden bird in visual flock
-            if (flock.length > 0) {
-                const bird = flock[flock.length - 1];
-                bird.weights = new Float32Array(genome);
-                bird.y = gameH * 0.4; bird.vy = 0; bird.alive = true;
-                bird.score = 0; bird.pipeIdx = 0;
-                bird.color = '#f59e0b'; bird.isForeign = true;
-            }
+            worker.postMessage({ type: 'inject', genome: Array.from(genome), fitness });
             $('p2pFlash').classList.add('show');
             setTimeout(() => $('p2pFlash').classList.remove('show'), 1500);
         },
@@ -837,11 +793,9 @@ function initP2P(room) {
     p2p.connect(room);
     $('p2pBtn').textContent = 'Connecting...';
     $('p2pBtn').disabled = true;
-    // If evolution already ran, broadcast current best once connected
+    // Broadcast current best once connected (catches evolution-ahead-of-P2P race)
     if (bestGenome && bestScore > 0) {
-        setTimeout(() => {
-            if (p2p) p2p.broadcastElite(bestGenome, bestScore);
-        }, 2000);
+        setTimeout(() => { if (p2p) p2p.broadcastElite(bestGenome, bestScore); }, 2000);
     }
 }
 
@@ -851,9 +805,8 @@ function initP2P(room) {
 $('startBtn').onclick = () => {
     $('startBtn').disabled = true; $('stopBtn').disabled = false;
     started = true; paused = false;
-    spawnFlock();
     worker.postMessage({ type: 'start' });
-    log('Evolution started — fused Flappy Bird kernel on GPU', 'gpu');
+    log('Evolution started — GPU is training, bird replays the best brain', 'gpu');
 };
 $('stopBtn').onclick = () => {
     worker.postMessage({ type: 'stop' });
@@ -861,6 +814,11 @@ $('stopBtn').onclick = () => {
     $('startBtn').disabled = false; $('stopBtn').disabled = true;
     log('Paused', 'gpu');
 };
+worker.addEventListener('message', (e) => {
+    if (e.data.type === 'foreign_accepted') {
+        log(`Adopted foreign genome (score: ${Math.floor(e.data.fitness)}) — was stuck, trying new direction`, 'p2p');
+    }
+});
 $('p2pBtn').onclick = () => {
     const params = new URLSearchParams(window.location.search);
     initP2P(params.get('room') || 'flappy-demo');
