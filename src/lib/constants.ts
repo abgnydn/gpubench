@@ -22,10 +22,19 @@ export const LINKS = {
 } as const;
 
 export const STATS = {
+  // Paper numbers (2 machines: M2 Pro, T4)
   webgpuOverPytorch: "159",
   cudaOverPytorch: "720",
   jaxOverPytorch: "172",
   tritonOverPytorch: "27",
   browserOverhead: "1.92",
   fusionAblation: "2.18",
+  // Real-world numbers (487 devices, 8 GPU vendors)
+  appleAvgSpeedup: "4081",
+  adrenoAvgSpeedup: "826",
+  nvidiaAvgSpeedup: "70",
+  armAvgSpeedup: "55",
+  totalRuns: "487",
+  mobileTokensPerSecAvg: "15000",
+  mobileTokensPerSecPeak: "213000",
 } as const;

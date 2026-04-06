@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>P2P GPU Swarm Proof of Concept</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #0a0e1a;
+            color: #c8d6e5;
+            font-family: 'Inter', -apple-system, sans-serif;
+            padding: 32px 40px;
+        }
+        h1 { font-size: 1.5rem; font-weight: 700; color: #f1f5f9; letter-spacing: -0.02em; }
+        .subtitle { color: #64748b; font-size: 0.82rem; margin: 4px 0 24px; line-height: 1.5; }
+        .controls { margin-bottom: 20px; display: flex; gap: 10px; }
+        button {
+            font-family: 'Inter', sans-serif; font-weight: 600; font-size: 0.8rem;
+            padding: 9px 20px; border: none; border-radius: 6px; cursor: pointer;
+            transition: all 0.15s ease; letter-spacing: 0.01em;
+        }
+        .btn-primary { background: #00d4aa; color: #0a0e1a; }
+        .btn-primary:hover { background: #00f0c0; }
+        .btn-primary:disabled { background: #1e293b; color: #475569; cursor: default; }
+        .btn-secondary { background: #1e3a5f; color: #93c5fd; }
+        .btn-secondary:hover { background: #254d7a; }
+        .btn.outline { background: transparent; border: 1px solid #1e3a5f; color: #93c5fd; }
+        .btn.outline:hover:not(:disabled) { background: #1e3a5f; }
+        .btn.accent { background: #00d4aa; color: #0a0e1a; }
+        .btn.accent:hover:not(:disabled) { background: #00f0c0; }
+        .btn.danger { background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; }
+        .btn.danger:hover:not(:disabled) { background: #fecaca; }
+        .btn.shadow { box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); }
+        .btn:disabled { background: #1e293b; color: #475569; cursor: default; border-color: #1e293b; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .panel { background: #111827; border: 1px solid rgba(148, 163, 184, 0.08); border-radius: 10px; padding: 20px; }
+        .panel-header { font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: #64748b; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid rgba(148, 163, 184, 0.06); }
+        h2 { font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: #64748b; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid rgba(148, 163, 184, 0.06); }
+        .stat { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; font-size: 0.82rem; }
+        .stat-label { color: #64748b; }
+        .stat-value { font-family: 'JetBrains Mono', monospace; font-weight: 500; color: #00d4aa; font-size: 0.85rem; }
+        .stat-value.accent { color: #f59e0b; }
+        .stat-value.connected { color: #22c55e; }
+        .stat-value.neutral { color: #94a3b8; }
+        canvas { width: 100%; height: 180px; margin-top: 14px; border-radius: 6px; background: #0c1221; }
+        #log { background: #0c1221; border-radius: 6px; padding: 12px; height: 220px; overflow-y: auto; font-family: 'JetBrains Mono', monospace; font-size: 0.68rem; line-height: 1.7; color: #475569; margin-top: 14px; }
+        #log::-webkit-scrollbar { width: 4px; }
+        #log::-webkit-scrollbar-track { background: transparent; }
+        #log::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 2px; }
+        .log-p2p { color: #f59e0b; }
+        .log-fit { color: #00d4aa; }
+        .log-gpu { color: #a78bfa; }
+        .log-time { color: #334155; margin-right: 6px; }
+        .divider { height: 1px; background: rgba(148,163,184,0.06); margin: 4px 0; }
+    </style>
+</head>
+<body>
+    <h1>Evolving 4,096 AI Networks <span>Browser-Native GPU Proof of Concept v46</span></h1>
+    <div style="margin-bottom: 24px; display: flex; gap: 12px; justify-content: flex-end;">
+        <button id="p2pBtn" class="btn outline">Connect P2P Cluster</button>
+        <button id="startBtn" class="btn accent shadow" disabled>Initializing GPU...</button>
+        <button id="stopBtn" class="btn danger shadow" disabled>Stop Evolution</button>
+    </div>
+    
+    <div class="grid">
+        <div class="panel">
+            <div class="panel-header">Local Evolution Engine</div>
+            <div class="stat"><span class="stat-label">Compute Backend</span><span class="stat-value">WebGPU / Metal Worker</span></div>
+            <div class="stat"><span class="stat-label">Population</span><span class="stat-value">4,096 networks</span></div>
+            <div class="stat"><span class="stat-label">Benchmark</span><span class="stat-value">Rastrigin f(x), 2,000 dimensions</span></div>
+            <div class="divider"></div>
+            <div class="stat"><span class="stat-label">Generation</span><span class="stat-value" id="gen">0</span></div>
+            <div class="stat"><span class="stat-label">Best Fitness</span><span class="stat-value" id="fit">—</span></div>
+            <div class="stat"><span class="stat-label">Throughput</span><span class="stat-value" id="speed">—</span></div>
+            <div class="divider"></div>
+            <div class="stat"><span class="stat-label">Benchmark Goal</span><span class="stat-value neutral">Reach -15000 (Rastrigin)</span></div>
+            <div class="stat"><span class="stat-label">Time to Solve</span><span class="stat-value accent" id="solveTime">Ready</span></div>
+            <canvas id="chart"></canvas>
+        </div>
+        <div class="panel">
+            <h2>PEER-TO-PEER NETWORK</h2>
+            <div class="stat"><span class="stat-label">Transport</span><span class="stat-value neutral">WebRTC DataChannel</span></div>
+            <div class="stat"><span class="stat-label">Room</span><span class="stat-value" id="roomName">—</span></div>
+            <div class="stat"><span class="stat-label">Node ID</span><span class="stat-value" id="nodeId">—</span></div>
+            <div class="stat"><span class="stat-label">Signaling (WS)</span><span class="stat-value neutral" id="wsStatus">Disconnected</span></div>
+            <div class="stat"><span class="stat-label">Data Channel (WebRTC)</span><span class="stat-value neutral" id="p2pStatus">Disconnected</span></div>
+            <div class="divider"></div>
+            <div class="stat"><span class="stat-label">Genomes Sent</span><span class="stat-value accent" id="sent">0</span></div>
+            <div class="stat"><span class="stat-label">Genomes Received</span><span class="stat-value accent" id="recv">0</span></div>
+            <div class="stat"><span class="stat-label">Foreign Elite Fitness</span><span class="stat-value accent" id="foreignFit">—</span></div>
+            <canvas id="meshCanvas" style="width:100%;height:100px;margin-top:10px;border-radius:6px;background:#0c1221;"></canvas>
+            <div id="log"></div>
+        </div>
+    </div>
+
+<script src="device-telemetry.js"></script>
+<script src="swarm-p2p.js"></script>
+<script>
+// ═══════════════════════════════════════════════════════════════
+// UI & WORKER ORCHESTRATION
+// ═══════════════════════════════════════════════════════════════
+let fitHistory = [];
+let foreignEliteEvents = []; // { genIndex, fitness } — marks when foreign elites arrived
+let hasStarted = false;
+let startTime = 0;
+let solvedTime = null;
+
+const engine = new Worker('engine.js?v=' + Date.now());
+
+engine.onmessage = (e) => {
+    const msg = e.data;
+    if (msg.type === 'ready') {
+        const btn = document.getElementById('startBtn');
+        btn.disabled = false;
+        btn.textContent = 'Start Evolution';
+    } else if (msg.type === 'error') {
+        log('WebGPU Error: ' + msg.error, 'warn');
+        document.getElementById('startBtn').textContent = 'GPU Error';
+    } else if (msg.type === 'benchmark_start') {
+        startTime = performance.now();
+        document.getElementById('startBtn').disabled = true;
+        document.getElementById('startBtn').textContent = 'Running...';
+        document.getElementById('stopBtn').disabled = false;
+    } else if (msg.type === 'stats') {
+        const { gen, bestFit, speed, bestGenome } = msg;
+        fitHistory.push(bestFit);
+        document.getElementById('gen').textContent = gen.toLocaleString();
+        document.getElementById('fit').textContent = bestFit.toFixed(4);
+        document.getElementById('speed').textContent = speed.toFixed(0) + ' gen/s';
+        
+        if (solvedTime === null) {
+            document.getElementById('solveTime').textContent = ((performance.now() - startTime) / 1000).toFixed(1) + 's';
+        }
+        if (solvedTime === null && bestFit >= -15000.0) {
+            solvedTime = (performance.now() - startTime) / 1000;
+            document.getElementById('solveTime').textContent = solvedTime.toFixed(2) + ' seconds';
+            document.getElementById('solveTime').className = 'stat-value connected';
+            log(`🎯 BENCHMARK SOLVED in ${solvedTime.toFixed(2)}s!`, 'fit');
+        }
+        
+        drawChart();
+        drawMesh();
+
+        // Device telemetry (shared module)
+        reportDevice('Rastrigin P2P', bestFit, gen, speed);
+
+        // P2P auto-broadcast (data channel or WS relay fallback)
+        if (window._p2p && (window._p2p.isConnected || (window._p2p.ws && window._p2p.ws.readyState === 1))) {
+            window._p2p.broadcastElite(bestGenome, bestFit);
+        }
+    }
+};
+
+// ═══════════════════════════════════════════════════════════════
+// P2P — uses shared swarm-p2p.js module
+// ═══════════════════════════════════════════════════════════════
+const DIM = 2000; // must match engine.js
+
+// Thin wrapper that exposes the same API the rest of this file uses
+class P2P {
+    constructor(sigUrl, room) {
+        this._impl = new SwarmP2P({
+            defaultRoom: room,
+            signalingUrl: sigUrl,
+            genomeSize: DIM,
+            onEliteReceived: (genome, fitness, from) => {
+                engine.postMessage({ type: 'inject', genome: Array.from(genome) });
+                document.getElementById('recv').textContent = this._impl.status.received;
+                const fitEl = document.getElementById('foreignFit');
+                if (fitEl) fitEl.textContent = fitness.toFixed(4);
+                if (typeof foreignEliteEvents !== 'undefined') {
+                    foreignEliteEvents.push({ genIndex: fitHistory.length, fitness });
+                }
+            },
+            onStatusChange: (status) => {
+                const nodeEl = document.getElementById('nodeId');
+                if (nodeEl) nodeEl.textContent = status.nodeId;
+                const roomEl = document.getElementById('roomName');
+                if (roomEl) roomEl.textContent = status.room || '—';
+                document.getElementById('sent').textContent = status.sent;
+                document.getElementById('recv').textContent = status.received;
+                const wsEl = document.getElementById('wsStatus');
+                if (wsEl) {
+                    wsEl.textContent = status.signalingConnected ? 'Connected' : 'Disconnected';
+                    wsEl.className = status.signalingConnected ? 'stat-value connected' : 'stat-value neutral';
+                }
+                const p2pEl = document.getElementById('p2pStatus');
+                if (p2pEl) {
+                    if (status.peers > 0) {
+                        p2pEl.textContent = status.peers + ' peer' + (status.peers > 1 ? 's' : '') + ' linked';
+                        p2pEl.className = 'stat-value connected';
+                    } else if (status.signalingConnected) {
+                        p2pEl.textContent = 'Waiting for peers';
+                        p2pEl.className = 'stat-value neutral';
+                    } else {
+                        p2pEl.textContent = 'Disconnected';
+                        p2pEl.className = 'stat-value neutral';
+                    }
+                }
+            },
+            onLog: (msg, cls) => log(msg, cls),
+        });
+        this._impl.connect(room);
+    }
+    get isConnected() { return this._impl.status.connected; }
+    get ws() { return this._impl.ws; }
+    broadcastElite(genome, fitness) { this._impl.broadcastElite(genome, fitness); }
+    broadcastStart() {
+        // Legacy synchronized-start feature — unused by shared module
+        for (const [, p] of this._impl.peers) {
+            if (p.dc?.readyState === 'open') p.dc.send(JSON.stringify({ type: 'start_benchmark' }));
+        }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CHART
+// ═══════════════════════════════════════════════════════════════
+function drawChart() {
+    const canvas = document.getElementById('chart');
+    const ctx = canvas.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = canvas.offsetWidth * dpr;
+    canvas.height = canvas.offsetHeight * dpr;
+    ctx.scale(dpr, dpr);
+    const w = canvas.offsetWidth, h = canvas.offsetHeight;
+    
+    ctx.fillStyle = '#0c1221';
+    ctx.fillRect(0, 0, w, h);
+    
+    if (fitHistory.length < 2) return;
+    const data = fitHistory.filter((_, i) => i % Math.max(1, Math.floor(fitHistory.length / 300)) === 0);
+    const minF = Math.min(...data), maxF = Math.max(...data);
+    const range = maxF - minF || 1;
+    const pad = { t: 22, b: 8, l: 4, r: 4 };
+    
+    ctx.strokeStyle = 'rgba(148,163,184,0.04)';
+    ctx.lineWidth = 1;
+    for (let i = 0; i < 5; i++) {
+        const y = pad.t + ((h - pad.t - pad.b) / 4) * i;
+        ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(w - pad.r, y); ctx.stroke();
+    }
+    
+    const gradient = ctx.createLinearGradient(0, pad.t, 0, h - pad.b);
+    gradient.addColorStop(0, 'rgba(0, 212, 170, 0.15)');
+    gradient.addColorStop(1, 'rgba(0, 212, 170, 0)');
+    
+    ctx.beginPath();
+    for (let i = 0; i < data.length; i++) {
+        const x = pad.l + (i / (data.length - 1)) * (w - pad.l - pad.r);
+        const y = pad.t + (1 - (data[i] - minF) / range) * (h - pad.t - pad.b);
+        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.strokeStyle = '#00d4aa';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    
+    const lastX = pad.l + (1) * (w - pad.l - pad.r);
+    ctx.lineTo(lastX, h - pad.b);
+    ctx.lineTo(pad.l, h - pad.b);
+    ctx.closePath();
+    ctx.fillStyle = gradient;
+    ctx.fill();
+    
+    if (maxF > -10) {
+        const y0 = pad.t + (1 - (0 - minF) / range) * (h - pad.t - pad.b);
+        ctx.strokeStyle = 'rgba(245, 158, 11, 0.25)';
+        ctx.setLineDash([4, 4]);
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(pad.l, y0); ctx.lineTo(w - pad.r, y0); ctx.stroke();
+        ctx.setLineDash([]);
+    }
+    
+    // ─── Foreign elite injection markers (amber diamonds) ───
+    const step = Math.max(1, Math.floor(fitHistory.length / 300));
+    for (const evt of foreignEliteEvents) {
+        const di = Math.floor(evt.genIndex / step);
+        if (di < 0 || di >= data.length) continue;
+        const x = pad.l + (di / (data.length - 1)) * (w - pad.l - pad.r);
+        const y = pad.t + (1 - (evt.fitness - minF) / range) * (h - pad.t - pad.b);
+        const clampedY = Math.max(pad.t, Math.min(h - pad.b, y));
+        ctx.fillStyle = 'rgba(245, 158, 11, 0.7)';
+        ctx.beginPath();
+        ctx.moveTo(x, clampedY - 4);
+        ctx.lineTo(x + 3, clampedY);
+        ctx.lineTo(x, clampedY + 4);
+        ctx.lineTo(x - 3, clampedY);
+        ctx.closePath();
+        ctx.fill();
+    }
+
+    ctx.font = '10px Inter, sans-serif';
+    ctx.fillStyle = '#475569';
+    ctx.fillText('Fitness: ' + maxF.toFixed(2), pad.l + 4, 14);
+    ctx.fillStyle = '#334155';
+    ctx.textAlign = 'right';
+    ctx.fillText('gen ' + fitHistory.length.toLocaleString(), w - pad.r - 4, 14);
+    ctx.textAlign = 'left';
+}
+
+function drawMesh() {
+    const canvas = document.getElementById('meshCanvas');
+    const ctx = canvas.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = canvas.offsetWidth * dpr;
+    canvas.height = canvas.offsetHeight * dpr;
+    ctx.scale(dpr, dpr);
+    const w = canvas.offsetWidth, h = canvas.offsetHeight;
+
+    ctx.fillStyle = '#0c1221';
+    ctx.fillRect(0, 0, w, h);
+
+    if (!window._p2p) {
+        ctx.fillStyle = '#334155';
+        ctx.font = '11px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('P2P mesh — not connected', w / 2, h / 2 + 4);
+        return;
+    }
+
+    // Collect nodes: self + peers
+    const peers = [];
+    for (const [id, p] of window._p2p.peers) {
+        const open = p.dc && p.dc.readyState === 'open';
+        peers.push({ id, open });
+    }
+    const nodes = [{ id: window._p2p.nodeId, isSelf: true }, ...peers.map(p => ({ id: p.id, isSelf: false, open: p.open }))];
+    const n = nodes.length;
+    if (n < 1) return;
+
+    const cx = w / 2, cy = h / 2;
+    const r = Math.min(w, h) * 0.35;
+
+    // Position nodes in a circle
+    const positions = nodes.map((_, i) => {
+        const angle = (2 * Math.PI * i) / n - Math.PI / 2;
+        return { x: cx + r * Math.cos(angle), y: cy + r * Math.sin(angle) };
+    });
+
+    // Draw edges from self to each open peer
+    for (let i = 1; i < n; i++) {
+        ctx.strokeStyle = nodes[i].open ? 'rgba(0,212,170,0.3)' : 'rgba(100,116,139,0.15)';
+        ctx.lineWidth = nodes[i].open ? 1.5 : 0.5;
+        ctx.beginPath();
+        ctx.moveTo(positions[0].x, positions[0].y);
+        ctx.lineTo(positions[i].x, positions[i].y);
+        ctx.stroke();
+    }
+
+    // Draw nodes
+    for (let i = 0; i < n; i++) {
+        const { x, y } = positions[i];
+        const isSelf = nodes[i].isSelf;
+        const open = isSelf || nodes[i].open;
+        ctx.beginPath();
+        ctx.arc(x, y, isSelf ? 6 : 4, 0, Math.PI * 2);
+        ctx.fillStyle = isSelf ? '#00d4aa' : open ? '#f59e0b' : '#475569';
+        ctx.fill();
+        if (isSelf) {
+            ctx.strokeStyle = 'rgba(0,212,170,0.4)';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        }
+        // Label
+        ctx.fillStyle = '#64748b';
+        ctx.font = '9px JetBrains Mono, monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(isSelf ? 'you' : nodes[i].id.slice(0, 6), x, y + 14);
+    }
+}
+
+function log(msg, type) {
+    const el = document.getElementById('log');
+    const cls = type === 'p2p' ? 'log-p2p' : type === 'gpu' ? 'log-gpu' : 'log-fit';
+    const time = new Date().toLocaleTimeString('en-US', { hour12: false });
+    el.innerHTML += '<div><span class="log-time">' + time + '</span><span class="' + cls + '">' + msg + '</span></div>';
+    el.scrollTop = el.scrollHeight;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// BOOT — supports URL params for automation:
+//   ?sig=<relay-url>  — auto-connect P2P (default: SwarmP2P.DEFAULT_RELAY)
+//   &room=demo-room           — room name (default: demo-room)
+//   &autostart=1              — begin evolution on GPU ready
+// ═══════════════════════════════════════════════════════════════
+const params = new URLSearchParams(window.location.search);
+
+function connectP2P(sig, room) {
+    if (window._p2p) return;
+    window._p2p = new P2P(sig, room);
+    document.getElementById('p2pBtn').textContent = 'Connected \u2022 ' + room;
+    document.getElementById('p2pBtn').disabled = true;
+}
+
+function startEvolution() {
+    if (window._p2p && window._p2p.isConnected) window._p2p.broadcastStart();
+    if (!hasStarted) {
+        hasStarted = true;
+        engine.postMessage({ type: 'start' });
+    }
+}
+
+document.getElementById('startBtn').onclick = startEvolution;
+document.getElementById('stopBtn').onclick = () => {
+    engine.postMessage({ type: 'stop' });
+    hasStarted = false;
+    document.getElementById('startBtn').disabled = false;
+    document.getElementById('startBtn').textContent = 'Resume Evolution';
+    document.getElementById('stopBtn').disabled = true;
+    log('Evolution halted by user.', 'warn');
+};
+document.getElementById('p2pBtn').onclick = () => {
+    if (window._p2p) return;
+    const sig = prompt('Signaling Server URI:', SwarmP2P.DEFAULT_RELAY);
+    if (sig) {
+        const room = prompt('Room Name:', 'demo-room');
+        if (room) connectP2P(sig, room);
+    }
+};
+
+// ─── Auto-connect P2P via URL params ───
+if (params.get('sig')) {
+    const sig = params.get('sig');
+    const room = params.get('room') || 'demo-room';
+    // Defer slightly so engine Worker is initialized first
+    setTimeout(() => connectP2P(sig, room), 100);
+}
+
+// ─── Auto-start on GPU ready (when ?autostart=1) ───
+if (params.get('autostart') === '1') {
+    const _origOnMessage = engine.onmessage;
+    engine.onmessage = (e) => {
+        _origOnMessage(e);
+        if (e.data.type === 'ready') {
+            setTimeout(startEvolution, 200);
+        }
+    };
+}
+</script>
+</body>
+</html>

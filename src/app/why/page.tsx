@@ -98,8 +98,8 @@ export default function WhyPage() {
           </p>
           <div className="grid grid-cols-3 gap-4">
             {[
-              { number: "159\u00D7", label: "WebGPU over PyTorch\nsame M2 Pro GPU" },
-              { number: "720\u00D7", label: "CUDA over PyTorch\nsame Tesla T4 GPU" },
+              { number: "4,081\u00D7", label: "Apple Silicon average\n487 real-world devices" },
+              { number: "826\u00D7", label: "Android phones average\nQualcomm Adreno" },
               { number: "0", label: "things to install\njust open Chrome" },
             ].map((s) => (
               <div key={s.number} className="card text-center py-8">
@@ -190,19 +190,40 @@ export default function WhyPage() {
           <h2 className="text-2xl font-bold mb-6">The result that surprised us</h2>
           <div className="border-l-2 border-bench-accent/30 pl-6 py-2 mb-6">
             <p className="text-lg text-bench-muted italic leading-relaxed">
-              It&apos;s not a WebGPU trick. A hand-fused CUDA kernel on a Tesla T4
-              is 720&times; faster than PyTorch on the same GPU. The bottleneck
-              is framework dispatch overhead, not the GPU API.
+              The paper measured 159&ndash;720&times; on two machines.
+              Then 487 people ran it on their own devices, and the numbers got bigger.
             </p>
           </div>
-          <p className="text-sm text-bench-muted leading-relaxed">
-            We tested across four GPU APIs on two hardware platforms. On the same Tesla T4:
-            hand-fused CUDA 720&times;, JAX lax.scan 172&times;, Triton 27&times; &mdash; all
-            over PyTorch per-step dispatch. On the same M2 Pro: WebGPU 159&times; over PyTorch MPS.
-            The pattern is the same everywhere: fusing the entire simulation into one GPU dispatch
-            eliminates thousands of round-trips. PyTorch&apos;s own compiler crashes when it
-            tries (RecursionError at 1,000 steps, OOM at 5,000).
+          <p className="text-sm text-bench-muted leading-relaxed mb-4">
+            In the paper, we tested across four GPU APIs on two hardware platforms. On a Tesla T4:
+            hand-fused CUDA 720&times;, JAX lax.scan 172&times;, Triton 27&times;. On an M2 Pro:
+            WebGPU 159&times; over PyTorch MPS. The pattern was consistent: fusion eliminates dispatch overhead.
           </p>
+          <p className="text-sm text-bench-muted leading-relaxed">
+            Since publishing, 487 devices have confirmed this &mdash; and the real-world numbers are larger. Apple Silicon
+            averages 4,081&times;. Qualcomm Adreno (the chip in most Android phones) averages 826&times;. NVIDIA desktops
+            average 70&times;.
+          </p>
+        </section>
+
+        {/* Why are the real-world numbers bigger? */}
+        <section className="py-16 border-t border-bench-border/50">
+          <h2 className="text-2xl font-bold mb-6">Why are the real-world numbers bigger?</h2>
+          <div className="space-y-4 text-sm text-bench-muted leading-relaxed">
+            <p>
+              The papers measured on 2 machines: an Apple M2 Pro laptop and a Tesla T4 server. Both are fast GPUs
+              with efficient command dispatching. That&apos;s why the speedups were &ldquo;only&rdquo; 159&ndash;720&times;.
+            </p>
+            <p>
+              Real-world devices include phones, tablets, Chromebooks, and laptops with integrated GPUs &mdash; hardware
+              that was never designed for compute workloads. These GPUs have much worse dispatch overhead.
+            </p>
+            <p>
+              Kernel fusion eliminates dispatch overhead. So the worse a device is at dispatching, the more it benefits.
+              NVIDIA desktop GPUs (good dispatching) see ~70&times;. Apple Silicon laptops see ~4,081&times;. Android phones
+              see ~826&times;. <strong className="text-bench-text">The devices that need fusion most, benefit from it most.</strong>
+            </p>
+          </div>
         </section>
 
         {/* CTA */}

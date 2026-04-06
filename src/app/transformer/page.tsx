@@ -151,6 +151,9 @@ export default function TransformerPage() {
           <span className="px-4 py-2 rounded-md text-sm font-medium bg-bench-accent/10 text-bench-accent">
             Transformer Fusion
           </span>
+          <a href="/swarm" className="px-4 py-2 rounded-md text-sm font-medium text-bench-muted hover:text-bench-text transition">
+            Distributed P2P
+          </a>
         </div>
 
         <h1 className="text-3xl md:text-4xl font-bold tracking-tight leading-[1.1] mb-3">

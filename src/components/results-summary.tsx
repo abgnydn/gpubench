@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { ShareButtons } from "./share-buttons";
 
 interface BenchmarkResult {
   name: string;
@@ -10,6 +10,7 @@ interface BenchmarkResult {
 
 interface ResultsSummaryProps {
   results: BenchmarkResult[];
+  gpuName?: string;
 }
 
 function getGrade(score: number): { label: string; color: string; gradient: string; percentile: string } {
@@ -21,9 +22,52 @@ function getGrade(score: number): { label: string; color: string; gradient: stri
   return { label: "Low", color: "text-bench-red", gradient: "from-bench-red to-rose-300", percentile: "Bottom 20%" };
 }
 
-export function ResultsSummary({ results }: ResultsSummaryProps) {
-  const [copied, setCopied] = useState(false);
+function cleanGpuName(raw: string | undefined): string {
+  if (!raw) return "Unknown GPU";
+  const cleaned = raw
+    .replace(/ANGLE \(.*?\)/g, "")
+    .replace(/Direct3D11.*$/g, "")
+    .replace(/\(0x[0-9A-Fa-f]+\)/g, "")
+    .replace(/\s*vs_\d+_\d+\s*ps_\d+_\d+/g, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+  return cleaned || "Unknown GPU";
+}
 
+function formatShareText(
+  gpuName: string,
+  geoMean: number,
+  grade: { label: string; percentile: string },
+  results: BenchmarkResult[],
+): string {
+  const gpu = cleanGpuName(gpuName);
+  // Highest-throughput benchmark as the single "flex" number people can read
+  const peak = results.reduce<BenchmarkResult | null>(
+    (best, r) => (!best || r.throughput > best.throughput ? r : best),
+    null,
+  );
+  const peakLine = peak
+    ? `Fastest test: ${peak.throughput.toLocaleString()} runs/sec on ${peak.name}`
+    : "";
+
+  return [
+    `I just tested my GPU speed in a browser tab. No install, no CUDA.`,
+    "",
+    `Device:  ${gpu}`,
+    `Score:   ${geoMean.toLocaleString()} — ${grade.label} (${grade.percentile} of tested devices)`,
+    peakLine,
+    "",
+    `It runs real compute (physics sims, optimization, Monte Carlo) on your GPU through the browser. Test yours:`,
+    `https://gpubench.dev`,
+  ]
+    .filter((l) => l !== "")
+    .join("\n")
+    // restore intentional blank lines (markers)
+    .replace(/(Device:.*$)/m, "\n$1")
+    .replace(/(It runs real compute.*$)/m, "\n$1");
+}
+
+export function ResultsSummary({ results, gpuName }: ResultsSummaryProps) {
   if (results.length === 0) return null;
 
   const geoMean = Math.round(
@@ -35,19 +79,7 @@ export function ResultsSummary({ results }: ResultsSummaryProps) {
 
   const grade = getGrade(geoMean);
 
-  const shareText = [
-    `WebGPU Bench Score: ${geoMean.toLocaleString()}`,
-    "",
-    ...results.map((r) => `  ${r.name}: ${r.throughput.toLocaleString()} gen/s (${r.meanTime.toFixed(2)}ms/gen)`),
-    "",
-    "Run yours: gpubench.dev",
-  ].join("\n");
-
-  const handleCopy = async () => {
-    await navigator.clipboard.writeText(shareText);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
+  const shareText = formatShareText(gpuName ?? "", geoMean, grade, results);
 
   return (
     <div className="card border-bench-accent/20 overflow-hidden relative">
@@ -81,22 +113,13 @@ export function ResultsSummary({ results }: ResultsSummaryProps) {
           ))}
         </div>
 
-        <button
-          onClick={handleCopy}
-          className="btn-secondary inline-flex items-center gap-2 text-sm"
-        >
-          {copied ? (
-            <>
-              <svg className="w-4 h-4 text-bench-green" viewBox="0 0 16 16" fill="none"><path d="M3 8l3 3 7-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-              Copied!
-            </>
-          ) : (
-            <>
-              <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none"><rect x="5" y="5" width="9" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.5"/><path d="M3 11V3a2 2 0 012-2h8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
-              Copy Results
-            </>
-          )}
-        </button>
+        <div className="flex justify-center">
+          <ShareButtons
+            text={shareText}
+            url="https://gpubench.dev"
+            title={`WebGPU Bench Score: ${geoMean.toLocaleString()}`}
+          />
+        </div>
 
         <p className="text-[10px] text-bench-muted/40 mt-6">
           Powered by WebGPU Bench &mdash; all computation ran locally on your GPU

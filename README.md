@@ -34,6 +34,20 @@ All benchmarks run as real WGSL compute shaders dispatched via the WebGPU API. S
 
 Data from macOS, Windows, Linux across Chrome, Safari, Firefox, and Edge.
 
+### Transformer Fusion Results (70 runs)
+
+Real-world speedup data from the transformer benchmark:
+
+| GPU Vendor | Avg Speedup | Peak Speedup |
+|---|---|---|
+| **Apple Silicon** | 4,081× | 79,021× |
+| **Qualcomm Adreno** | 826× | 13,541× |
+| **NVIDIA** | 70× | 159× |
+| **ARM** | 55× | — |
+
+- **Mobile overall:** 15,000 tokens/sec avg, 213,000 peak
+- Higher speedups on mobile reflect worse dispatch overhead on mobile GPUs — kernel fusion benefits them most
+
 ## The Research
 
 This benchmark site demonstrates kernel fusion — fusing sequential GPU dispatches into one:

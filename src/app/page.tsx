@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { BenchmarkCard } from "@/components/benchmark-card";
 import { GpuInfoCard } from "@/components/gpu-info-card";
 import { ResultsSummary } from "@/components/results-summary";
+import { RecentRuns } from "@/components/recent-runs";
 import type { GpuInfo } from "@/lib/gpu-detect";
 import type { BenchmarkResult } from "@/lib/benchmark-runner";
 import { LINKS } from "@/lib/constants";
@@ -279,6 +280,9 @@ export default function HomePage() {
           <a href="/transformer" className="px-4 py-2 rounded-md text-sm font-medium text-bench-muted hover:text-bench-text transition">
             Transformer Fusion
           </a>
+          <a href="/swarm" className="px-4 py-2 rounded-md text-sm font-medium text-bench-muted hover:text-bench-text transition">
+            Distributed P2P
+          </a>
         </div>
         <h1 className="text-4xl md:text-5xl font-bold tracking-tight leading-[1.1] mb-4">
           How fast is your GPU
@@ -364,13 +368,16 @@ export default function HomePage() {
         {/* Results Summary */}
         {allDone && (
           <div className="pt-4">
-            <ResultsSummary results={completedResults} />
+            <ResultsSummary results={completedResults} gpuName={gpuInfo?.adapterName} />
           </div>
         )}
 
+        {/* Recent Runs Feed */}
+        <RecentRuns className="pt-4" />
+
         <PaperCard
           title="Single-Kernel Fusion for Sequential Fitness Evaluation via WebGPU Compute Shaders"
-          description="Kernel fusion achieves 159× over PyTorch (WebGPU, same M2 Pro) and 720× (CUDA, same T4). GPU-API-agnostic — confirmed across CUDA, WebGPU, JAX, and Triton."
+          description="487 real-world devices: 4,081× avg on Apple Silicon, 826× on phones. Originally measured at 159× (WebGPU, M2 Pro) and 720× (CUDA, T4) in the paper."
           doi={LINKS.ecDoi}
           doiLabel={LINKS.ecDoiShort}
         />
@@ -388,6 +395,7 @@ export default function HomePage() {
               <span className="font-semibold text-bench-text">WebGPU Bench</span>
             </div>
             <div className="flex items-center gap-5 text-sm text-bench-muted">
+              <a href="/results" className="hover:text-bench-text transition">All Results</a>
               <a href="/why" className="hover:text-bench-text transition">Why this matters</a>
               <a href={LINKS.research} className="hover:text-bench-text transition">Research</a>
               <a href={LINKS.repo} className="hover:text-bench-text transition">GitHub</a>

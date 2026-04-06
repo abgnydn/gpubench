@@ -84,8 +84,52 @@ export async function POST(request: Request) {
   }
 }
 
-export async function GET() {
+function bucketVendor(name: string, vendor: string): string {
+  const n = (name || "").toLowerCase();
+  const v = (vendor || "").toLowerCase();
+  if (n.includes("apple") || v.includes("apple")) return "Apple Silicon";
+  if (n.includes("adreno") || v.includes("qualcomm")) return "Qualcomm Adreno";
+  if (n.includes("mali") || v.includes("arm")) return "ARM Mali";
+  if (n.includes("nvidia") || n.includes("rtx") || n.includes("geforce") || v.includes("nvidia")) return "NVIDIA";
+  if (n.includes("radeon") || n.includes("amd") || v.includes("amd")) return "AMD";
+  if (n.includes("intel") || v.includes("intel")) return "Intel";
+  return "Other";
+}
+
+export async function GET(request: Request) {
   try {
+    const { searchParams } = new URL(request.url);
+    const all = searchParams.get("all") === "true";
+
+    if (all) {
+      const page = Math.max(1, Number(searchParams.get("page") ?? 1));
+      const limit = 100;
+      const offset = (page - 1) * limit;
+
+      const totalResult = await sql`SELECT COUNT(*) as count FROM transformer_runs`;
+      const total = Number(totalResult.rows[0]?.["count"] ?? 0);
+
+      const rows = await sql`
+        SELECT gpu_name, gpu_vendor, gpu_arch, config, layers, d_model, dispatches,
+               unfused_ms, fused_1t_ms, parallel_ms,
+               speedup_1t, speedup_parallel, tokens_per_sec,
+               browser, os, is_mobile, created_at
+        FROM transformer_runs
+        ORDER BY created_at DESC
+        LIMIT ${limit} OFFSET ${offset}
+      `;
+
+      const response = NextResponse.json({
+        total,
+        page,
+        totalPages: Math.ceil(total / limit),
+        rows: rows.rows,
+      });
+      response.headers.set("Cache-Control", "public, s-maxage=30, stale-while-revalidate=60");
+      response.headers.set("Access-Control-Allow-Origin", "*");
+      return response;
+    }
+
     const totalResult = await sql`SELECT COUNT(*) as count FROM transformer_runs`;
     const total = Number(totalResult.rows[0]?.["count"] ?? 0);
 
@@ -95,10 +139,81 @@ export async function GET() {
       GROUP BY gpu_name ORDER BY avg_speedup DESC LIMIT 10
     `;
 
-    const response = NextResponse.json({ total, topGpus: topGpus.rows });
+    const allRows = await sql`
+      SELECT gpu_name, gpu_vendor, speedup_parallel, tokens_per_sec, is_mobile, browser
+      FROM transformer_runs
+      WHERE speedup_parallel IS NOT NULL
+    `;
+
+    const byVendor: Record<string, { total: number; sum: number; peak: number }> = {};
+    let mobileCount = 0;
+    let tpsSum = 0;
+    let tpsCount = 0;
+    let tpsPeak = 0;
+    const browserCounts: Record<string, number> = {};
+
+    for (const row of allRows.rows) {
+      const speedup = Number(row["speedup_parallel"] ?? 0);
+      const tps = Number(row["tokens_per_sec"] ?? 0);
+      const bucket = bucketVendor(
+        String(row["gpu_name"] ?? ""),
+        String(row["gpu_vendor"] ?? ""),
+      );
+      if (!byVendor[bucket]) byVendor[bucket] = { total: 0, sum: 0, peak: 0 };
+      byVendor[bucket].total++;
+      byVendor[bucket].sum += speedup;
+      if (speedup > byVendor[bucket].peak) byVendor[bucket].peak = speedup;
+      if (row["is_mobile"] === true) mobileCount++;
+      if (Number.isFinite(tps) && tps > 0) {
+        tpsSum += tps;
+        tpsCount++;
+        if (tps > tpsPeak) tpsPeak = tps;
+      }
+      const browser = String(row["browser"] ?? "Unknown").split(" ")[0] ?? "Unknown";
+      browserCounts[browser] = (browserCounts[browser] ?? 0) + 1;
+    }
+
+    const vendorAggregates = Object.entries(byVendor)
+      .map(([name, v]) => ({
+        name,
+        runs: v.total,
+        avgSpeedup: Math.round(v.sum / Math.max(v.total, 1)),
+        peakSpeedup: Math.round(v.peak),
+      }))
+      .sort((a, b) => b.avgSpeedup - a.avgSpeedup);
+
+    const response = NextResponse.json({
+      total,
+      topGpus: topGpus.rows,
+      vendors: vendorAggregates,
+      mobile: {
+        runs: mobileCount,
+        avgTokensPerSec: tpsCount ? Math.round(tpsSum / tpsCount) : 0,
+        peakTokensPerSec: Math.round(tpsPeak),
+      },
+      browsers: browserCounts,
+    });
     response.headers.set("Cache-Control", "public, s-maxage=30, stale-while-revalidate=60");
+    response.headers.set("Access-Control-Allow-Origin", "*");
+    response.headers.set("Access-Control-Allow-Methods", "GET, OPTIONS");
     return response;
   } catch {
-    return NextResponse.json({ total: 0, topGpus: [] });
+    const fallback = NextResponse.json({
+      total: 0,
+      topGpus: [],
+      vendors: [],
+      mobile: { runs: 0, avgTokensPerSec: 0, peakTokensPerSec: 0 },
+      browsers: {},
+    });
+    fallback.headers.set("Access-Control-Allow-Origin", "*");
+    return fallback;
   }
+}
+
+export async function OPTIONS() {
+  const response = new NextResponse(null, { status: 204 });
+  response.headers.set("Access-Control-Allow-Origin", "*");
+  response.headers.set("Access-Control-Allow-Methods", "GET, OPTIONS");
+  response.headers.set("Access-Control-Allow-Headers", "Content-Type");
+  return response;
 }

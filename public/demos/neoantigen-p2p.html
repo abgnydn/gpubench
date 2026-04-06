@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Neoantigen P2P Swarm — Multi-Allele MHC-I Evolution</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #0a0a0f; color: #e0e0e0; font-family: 'Menlo', 'Consolas', monospace; padding: 16px; }
+h1 { color: #cc44ff; font-size: 1.3em; }
+.subtitle { color: #666; font-size: 0.8em; margin-bottom: 16px; }
+.grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; max-width: 1400px; }
+.panel { background: #111118; border: 1px solid #222; border-radius: 8px; padding: 14px; }
+.panel h2 { font-size: 0.9em; margin-bottom: 10px; border-bottom: 1px solid #222; padding-bottom: 4px; }
+.h-evo { color: #cc44ff; } .h-p2p { color: #00aaff; } .h-seq { color: #00ff88; }
+.stat-row { display: flex; justify-content: space-between; margin: 4px 0; font-size: 0.85em; }
+.stat-label { color: #888; } .stat-value { color: #fff; font-weight: bold; }
+.good { color: #00ff88; } .warn { color: #ffaa00; } .connected { color: #00aaff; } .neutral { color: #888; }
+button { background: #7722aa; color: #fff; border: none; padding: 8px 20px; border-radius: 6px; cursor: pointer; font-family: inherit; margin-right: 8px; }
+button:hover { background: #9933cc; } button:disabled { background: #333; color: #666; }
+button.stop { background: #aa3333; }
+.controls { margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+select { background: #222; color: #e0e0e0; border: 1px solid #444; padding: 6px 10px; border-radius: 4px; font-family: inherit; }
+.seq-display { background: #0a0a12; border: 1px solid #333; border-radius: 6px; padding: 12px; font-size: 1.6em; letter-spacing: 4px; text-align: center; margin: 8px 0; }
+.seq-display .anchor { color: #cc44ff; font-weight: bold; text-decoration: underline; }
+.seq-display .tcr { color: #ff8800; }
+.chart-container { height: 150px; background: #0a0a12; border-radius: 4px; }
+canvas { width: 100%; height: 100%; }
+.status { color: #666; font-size: 0.85em; } .status.running { color: #cc44ff; }
+.log { background: #0a0a12; border: 1px solid #222; border-radius: 4px; padding: 8px; font-size: 0.7em; max-height: 160px; overflow-y: auto; color: #888; }
+.log .p2p { color: #00aaff; } .log .fit { color: #00ff88; } .log .err { color: #ff4444; } .log .cross { color: #cc44ff; }
+.allele-tag { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.75em; font-weight: bold; }
+.full-width { grid-column: 1 / -1; }
+.top-item { display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px solid #1a1a22; font-size: 0.8em; }
+.top-seq { letter-spacing: 1px; color: #ddd; } .top-fit { color: #00ff88; }
+.cross-allele { background: #1a0a22; border: 1px solid #333; border-radius: 4px; padding: 8px; margin-top: 8px; }
+.cross-allele h3 { font-size: 0.8em; color: #cc44ff; margin-bottom: 6px; }
+.cross-item { font-size: 0.75em; margin: 2px 0; }
+</style>
+</head>
+<body>
+
+<h1>Neoantigen P2P Swarm — Multi-Allele MHC-I Evolution</h1>
+<p class="subtitle">6 HLA alleles as islands | Elite exchange finds broadly immunogenic peptides | WebRTC + WS relay</p>
+
+<div class="controls">
+    <button id="startBtn" disabled>Start Evolution</button>
+    <button id="stopBtn" class="stop" disabled>Stop</button>
+    <label style="color:#888;font-size:0.85em">HLA Allele:</label>
+    <select id="alleleSelect">
+        <option value="0">HLA-A*02:01 (P2:L/M P9:V/L)</option>
+        <option value="1">HLA-A*03:01 (P2:L/M P9:K/R)</option>
+        <option value="2">HLA-B*07:02 (P2:P P9:L)</option>
+        <option value="3">HLA-B*08:01 (P2:R P9:L)</option>
+    </select>
+    <span class="allele-tag" id="alleleTag" style="background:#cc44ff;color:#fff">HLA-A*02:01</span>
+    <span class="status" id="status">Initializing...</span>
+</div>
+
+<div class="grid">
+    <!-- Best Peptide -->
+    <div class="panel full-width">
+        <h2 class="h-evo">Best Neoantigen — <span id="alleleName">HLA-A*02:01</span></h2>
+        <div class="seq-display" id="bestSeq">— — — — — — — — —</div>
+        <div style="text-align:center;font-size:0.7em;color:#555;letter-spacing:4px">P1 P2 P3 P4 P5 P6 P7 P8 P9</div>
+    </div>
+
+    <!-- Evolution Stats -->
+    <div class="panel">
+        <h2 class="h-evo">Evolution</h2>
+        <div class="stat-row"><span class="stat-label">Generation</span><span class="stat-value" id="gen">0</span></div>
+        <div class="stat-row"><span class="stat-label">Fitness</span><span class="stat-value good" id="fit">0.00</span></div>
+        <div class="stat-row"><span class="stat-label">Speed</span><span class="stat-value" id="speed">—</span></div>
+        <div class="stat-row"><span class="stat-label">P2 Anchor</span><span class="stat-value" id="p2anchor">—</span></div>
+        <div class="stat-row"><span class="stat-label">P9 Anchor</span><span class="stat-value" id="p9anchor">—</span></div>
+        <div class="stat-row"><span class="stat-label">Net Charge</span><span class="stat-value" id="netCharge">—</span></div>
+    </div>
+
+    <!-- P2P Stats -->
+    <div class="panel">
+        <h2 class="h-p2p">P2P Network</h2>
+        <div class="stat-row"><span class="stat-label">Signaling</span><span class="stat-value neutral" id="wsStatus">—</span></div>
+        <div class="stat-row"><span class="stat-label">P2P Status</span><span class="stat-value neutral" id="p2pStatus">—</span></div>
+        <div class="stat-row"><span class="stat-label">Room</span><span class="stat-value neutral" id="roomName">—</span></div>
+        <div class="stat-row"><span class="stat-label">Node ID</span><span class="stat-value neutral" id="nodeId">—</span></div>
+        <div class="stat-row"><span class="stat-label">Elites Sent</span><span class="stat-value" id="sent">0</span></div>
+        <div class="stat-row"><span class="stat-label">Elites Received</span><span class="stat-value" id="recv">0</span></div>
+        <div class="stat-row"><span class="stat-label">Cross-Allele Hits</span><span class="stat-value good" id="crossHits">0</span></div>
+    </div>
+
+    <!-- Top Candidates + Cross-Allele -->
+    <div class="panel">
+        <h2 class="h-seq">Top Candidates</h2>
+        <div id="topList" style="max-height:120px;overflow-y:auto;font-size:0.8em">—</div>
+        <div class="cross-allele">
+            <h3>Cross-Allele Binders</h3>
+            <div id="crossList" style="max-height:80px;overflow-y:auto">None yet</div>
+        </div>
+    </div>
+
+    <!-- Chart -->
+    <div class="panel">
+        <h2 class="h-evo">Fitness History</h2>
+        <div class="chart-container"><canvas id="chart"></canvas></div>
+    </div>
+
+    <!-- Log -->
+    <div class="panel">
+        <h2 class="h-p2p">Event Log</h2>
+        <div class="log" id="log"></div>
+    </div>
+</div>
+
+<script src="device-telemetry.js"></script>
+<script>
+const AA = 'ACDEFGHIKLMNPQRSTVWY';
+const AA_CHARGE = [0,0,-1,-1,0,0,0.5,0,1,0,0,0,0,0,1,0,0,0,0,0];
+const DIM = 9;
+
+const ALLELE_NAMES = ['HLA-A*02:01', 'HLA-A*03:01', 'HLA-B*07:02', 'HLA-B*08:01'];
+const ALLELE_COLORS = ['#cc44ff', '#00aaff', '#ff4444', '#ffaa00'];
+const ALLELE_P2 = [new Set('LMVIA'), new Set('LMVIA'), new Set('P'), new Set('RE')];
+const ALLELE_P9 = [new Set('VLIA'), new Set('KRY'), new Set('LVF'), new Set('LMF')];
+
+let currentAllele = 0;
+const params = new URLSearchParams(location.search);
+if (params.has('allele')) currentAllele = parseInt(params.get('allele')) % 4;
+
+document.getElementById('alleleSelect').value = currentAllele;
+document.getElementById('alleleTag').textContent = ALLELE_NAMES[currentAllele];
+document.getElementById('alleleTag').style.background = ALLELE_COLORS[currentAllele];
+document.getElementById('alleleName').textContent = ALLELE_NAMES[currentAllele];
+
+function colorizeSeq(seq) {
+    return seq.split('').map((aa, i) => {
+        if (i === 1 || i === 8) return `<span class="anchor">${aa}</span>`;
+        if (i >= 3 && i <= 6) return `<span class="tcr">${aa}</span>`;
+        return aa;
+    }).join(' ');
+}
+
+function log(msg, cls) {
+    const el = document.getElementById('log');
+    const t = new Date().toLocaleTimeString();
+    el.innerHTML = `<div class="${cls||''}">[${t}] ${msg}</div>` + el.innerHTML;
+    if (el.children.length > 100) el.lastChild.remove();
+}
+
+// Cross-allele tracking: peptides that score well on multiple alleles
+const crossAlleleBinders = new Map(); // seq -> Set of alleles that sent it
+let crossHitCount = 0;
+
+function checkCrossAllele(seq, fromAllele) {
+    if (!crossAlleleBinders.has(seq)) crossAlleleBinders.set(seq, new Set());
+    crossAlleleBinders.get(seq).add(fromAllele);
+    if (crossAlleleBinders.get(seq).size >= 2) {
+        crossHitCount++;
+        document.getElementById('crossHits').textContent = crossHitCount;
+    }
+    // Update cross-allele list
+    const multi = [...crossAlleleBinders.entries()].filter(([,s]) => s.size >= 2).sort((a,b) => b[1].size - a[1].size);
+    if (multi.length > 0) {
+        document.getElementById('crossList').innerHTML = multi.slice(0, 5).map(([seq, alleles]) =>
+            `<div class="cross-item">${seq} — binds ${[...alleles].map(a => ALLELE_NAMES[a]).join(', ')}</div>`
+        ).join('');
+    }
+}
+
+// ─── P2P Class ───
+class P2P {
+    constructor(sigUrl, room) {
+        this.nodeId = Math.random().toString(36).slice(2, 8);
+        this.peers = new Map();
+        this.candidateQueue = new Map();
+        this.isConnected = false;
+        this.gensRecv = 0;
+        this.lastBroadcastTime = 0;
+
+        document.getElementById('nodeId').textContent = this.nodeId;
+
+        this.ws = new WebSocket(sigUrl);
+        this.ws.onopen = () => {
+            this.ws.send(JSON.stringify({ type: 'join', room }));
+            document.getElementById('wsStatus').textContent = 'Connected';
+            document.getElementById('wsStatus').className = 'stat-value connected';
+            log('Joined room: ' + room, 'p2p');
+        };
+        this.ws.onclose = () => { document.getElementById('wsStatus').textContent = 'Disconnected'; };
+        this.ws.onerror = () => { log('WS error', 'err'); };
+        this.ws.onmessage = async (e) => {
+            const msg = JSON.parse(e.data);
+            if (msg.type === 'joined') {
+                document.getElementById('p2pStatus').textContent = 'In room (' + msg.peers + ' peers)';
+                document.getElementById('roomName').textContent = msg.room;
+                this.ws.send(JSON.stringify({ type: 'candidate', isHello: true, from: this.nodeId, room }));
+            }
+            if (msg.type === 'peer_joined') document.getElementById('p2pStatus').textContent = 'New peer...';
+            if (msg.type === 'candidate' && msg.isHello && msg.from !== this.nodeId) await this._createOffer(msg.from);
+            if (msg.type === 'elite_genome' || msg.type === 'elite') {
+                engine.postMessage({ type: 'inject', genome: msg.genome });
+                this.gensRecv++;
+                document.getElementById('recv').textContent = this.gensRecv;
+                const fromAllele = msg.allele !== undefined ? msg.allele : '?';
+                const seq = msg.sequence || '';
+                if (seq && fromAllele !== '?') checkCrossAllele(seq, fromAllele);
+                log('Elite from ' + ALLELE_NAMES[fromAllele] + ': ' + seq + ' (fit=' + (msg.fitness||0).toFixed(2) + ') [WS]', fromAllele === currentAllele ? 'p2p' : 'cross');
+                return;
+            }
+            if (msg.to !== this.nodeId) return;
+            if (msg.type === 'offer') await this._handleOffer(msg.offer, msg.from);
+            if (msg.type === 'answer') await this._handleAnswer(msg.answer, msg.from);
+            if (msg.type === 'candidate' && !msg.isHello) this._addCandidate(msg.candidate, msg.from);
+        };
+    }
+    async _createOffer(targetId) {
+        if (this.peers.has(targetId)) return;
+        const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+        const dc = pc.createDataChannel('genome', { ordered: false, maxRetransmits: 0 });
+        this.peers.set(targetId, { pc, dc });
+        this._setupDC(dc, targetId); this._setupPC(pc, targetId);
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        this.ws.send(JSON.stringify({ type: 'offer', offer: pc.localDescription, from: this.nodeId, to: targetId }));
+    }
+    async _handleOffer(offer, targetId) {
+        if (this.peers.has(targetId)) return;
+        const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+        this.peers.set(targetId, { pc, dc: null });
+        this._setupPC(pc, targetId);
+        pc.ondatachannel = (e) => { this.peers.get(targetId).dc = e.channel; this._setupDC(e.channel, targetId); };
+        await pc.setRemoteDescription(new RTCSessionDescription(offer));
+        this._flushCandidates(targetId);
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+        this.ws.send(JSON.stringify({ type: 'answer', answer: pc.localDescription, from: this.nodeId, to: targetId }));
+    }
+    async _handleAnswer(answer, targetId) {
+        const p = this.peers.get(targetId);
+        if (p?.pc.signalingState === 'have-local-offer') { await p.pc.setRemoteDescription(new RTCSessionDescription(answer)); this._flushCandidates(targetId); }
+    }
+    _addCandidate(c, targetId) {
+        const p = this.peers.get(targetId);
+        if (p?.pc.remoteDescription) p.pc.addIceCandidate(new RTCIceCandidate(c));
+        else { if (!this.candidateQueue.has(targetId)) this.candidateQueue.set(targetId, []); this.candidateQueue.get(targetId).push(c); }
+    }
+    _flushCandidates(targetId) {
+        const p = this.peers.get(targetId);
+        for (const c of (this.candidateQueue.get(targetId) || [])) { if (p?.pc.remoteDescription) p.pc.addIceCandidate(new RTCIceCandidate(c)); }
+        this.candidateQueue.delete(targetId);
+    }
+    _setupPC(pc, targetId) {
+        pc.onicecandidate = (e) => { if (e.candidate) this.ws.send(JSON.stringify({ type: 'candidate', candidate: e.candidate, from: this.nodeId, to: targetId })); };
+        pc.onconnectionstatechange = () => { if (pc.connectionState === 'connected') { this._updateStatus(); log('WebRTC → ' + targetId, 'p2p'); } };
+    }
+    _setupDC(dc, targetId) {
+        dc.binaryType = 'arraybuffer';
+        dc.onopen = () => this._updateStatus();
+        dc.onclose = () => this._updateStatus();
+        dc.onmessage = (e) => {
+            if (e.data instanceof ArrayBuffer && e.data.byteLength === (2 + DIM) * 4) {
+                const view = new Float32Array(e.data);
+                const fitness = view[0], fromAllele = view[1];
+                const genome = Array.from(view.subarray(2, 2 + DIM));
+                engine.postMessage({ type: 'inject', genome });
+                this.gensRecv++;
+                document.getElementById('recv').textContent = this.gensRecv;
+                log('Elite via DataChannel (fit=' + fitness.toFixed(2) + ', allele=' + ALLELE_NAMES[fromAllele] + ')', 'p2p');
+            }
+        };
+    }
+    _updateStatus() {
+        let open = 0;
+        for (const [,p] of this.peers) { if (p.dc?.readyState === 'open') open++; }
+        this.isConnected = open > 0;
+        document.getElementById('p2pStatus').textContent = open > 0 ? open + ' peer' + (open>1?'s':'') + ' linked' : 'Waiting';
+        document.getElementById('p2pStatus').className = 'stat-value ' + (open > 0 ? 'connected' : 'neutral');
+    }
+    broadcastElite(genome, fitness, sequence) {
+        const now = Date.now();
+        if (now - this.lastBroadcastTime < 500) return;
+        this.lastBroadcastTime = now;
+        // Binary: [fitness, allele, ...genome]
+        const buf = new Float32Array(2 + DIM);
+        buf[0] = fitness; buf[1] = currentAllele;
+        for (let i = 0; i < genome.length && i < DIM; i++) buf[i+2] = genome[i];
+        let sent = 0;
+        for (const [,p] of this.peers) { if (p.dc?.readyState === 'open') { p.dc.send(buf.buffer); sent++; } }
+        if (sent === 0 && this.ws?.readyState === 1) {
+            this.ws.send(JSON.stringify({ type: 'elite', fitness, genome: Array.from(genome), allele: currentAllele, sequence }));
+            sent = 1;
+        }
+        if (sent > 0) {
+            document.getElementById('sent').textContent = parseInt(document.getElementById('sent').textContent || 0) + 1;
+            // Track our own peptide
+            if (sequence) checkCrossAllele(sequence, currentAllele);
+        }
+    }
+}
+
+// ─── Engine ───
+const engine = new Worker('neoantigen_engine.js');
+let t0 = null, p2p = null;
+const fitHistory = [];
+
+const canvas = document.getElementById('chart');
+const ctx = canvas.getContext('2d');
+function drawChart() {
+    const W = canvas.width = canvas.offsetWidth * 2;
+    const H = canvas.height = canvas.offsetHeight * 2;
+    ctx.clearRect(0, 0, W, H);
+    if (fitHistory.length < 2) return;
+    const minF = Math.min(...fitHistory), maxF = Math.max(...fitHistory), range = maxF - minF || 1, pad = 10;
+    ctx.strokeStyle = '#1a1a22'; ctx.lineWidth = 1;
+    for (let i = 0; i < 5; i++) { const y = pad+(H-2*pad)*i/4; ctx.beginPath(); ctx.moveTo(pad,y); ctx.lineTo(W-pad,y); ctx.stroke(); }
+    ctx.strokeStyle = ALLELE_COLORS[currentAllele]; ctx.lineWidth = 2; ctx.beginPath();
+    for (let i = 0; i < fitHistory.length; i++) {
+        const x = pad+(W-2*pad)*i/(fitHistory.length-1);
+        const y = H-pad-(H-2*pad)*(fitHistory[i]-minF)/range;
+        if (i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    }
+    ctx.stroke();
+    ctx.fillStyle = '#666'; ctx.font = `${Math.max(14,H/14)}px monospace`;
+    ctx.fillText(maxF.toFixed(1), pad+4, pad+14);
+    ctx.fillText(minF.toFixed(1), pad+4, H-pad-4);
+}
+
+engine.onmessage = (e) => {
+    const d = e.data;
+    if (d.type === 'ready') {
+        document.getElementById('startBtn').disabled = false;
+        document.getElementById('status').textContent = 'Ready';
+        const sig = params.get('sig') || SwarmP2P.DEFAULT_RELAY;
+        const room = params.get('room') || 'neoantigen-swarm';
+        p2p = new P2P(sig, room);
+    } else if (d.type === 'stats') {
+        document.getElementById('gen').textContent = d.gen.toLocaleString();
+        document.getElementById('fit').textContent = d.bestFit.toFixed(2);
+        document.getElementById('speed').textContent = d.speed.toFixed(0) + ' gen/s';
+        document.getElementById('bestSeq').innerHTML = colorizeSeq(d.sequence);
+
+        const p2ok = ALLELE_P2[currentAllele].has(d.sequence[1]);
+        const p9ok = ALLELE_P9[currentAllele].has(d.sequence[8]);
+        document.getElementById('p2anchor').textContent = d.sequence[1] + (p2ok ? ' (optimal)' : '');
+        document.getElementById('p2anchor').className = 'stat-value ' + (p2ok ? 'good' : 'warn');
+        document.getElementById('p9anchor').textContent = d.sequence[8] + (p9ok ? ' (optimal)' : '');
+        document.getElementById('p9anchor').className = 'stat-value ' + (p9ok ? 'good' : 'warn');
+
+        let charge = 0;
+        for (const aa of d.sequence) { const i = AA.indexOf(aa); if (i>=0) charge += AA_CHARGE[i]; }
+        document.getElementById('netCharge').textContent = (charge>0?'+':'') + charge.toFixed(1);
+
+        fitHistory.push(d.bestFit);
+        if (fitHistory.length > 500) fitHistory.shift();
+        drawChart();
+
+        if (d.topCandidates) {
+            document.getElementById('topList').innerHTML = d.topCandidates.slice(0, 8).map((c, i) =>
+                `<div class="top-item"><span class="top-seq">${i+1}. ${c.sequence}</span><span class="top-fit">${c.fitness.toFixed(2)}</span></div>`
+            ).join('');
+        }
+
+        if (p2p && (p2p.isConnected || (p2p.ws && p2p.ws.readyState === 1))) {
+            p2p.broadcastElite(d.bestGenome, d.bestFit, d.sequence);
+        reportDevice('Neoantigen (Allele ' + currentAllele + ')', d.bestFit, d.gen, parseFloat(document.getElementById('speed')?.textContent) || 0);
+        }
+    }
+};
+
+document.getElementById('alleleSelect').onchange = (e) => {
+    currentAllele = parseInt(e.target.value);
+    document.getElementById('alleleTag').textContent = ALLELE_NAMES[currentAllele];
+    document.getElementById('alleleTag').style.background = ALLELE_COLORS[currentAllele];
+    document.getElementById('alleleName').textContent = ALLELE_NAMES[currentAllele];
+    engine.postMessage({ type: 'allele', allele: currentAllele });
+    log('Switched to ' + ALLELE_NAMES[currentAllele], 'fit');
+};
+
+document.getElementById('startBtn').onclick = () => {
+    engine.postMessage({ type: 'allele', allele: currentAllele });
+    engine.postMessage({ type: 'start' });
+    t0 = performance.now();
+    document.getElementById('startBtn').disabled = true;
+    document.getElementById('stopBtn').disabled = false;
+    document.getElementById('status').textContent = 'Evolving...';
+    document.getElementById('status').className = 'status running';
+    log('Evolution started (' + ALLELE_NAMES[currentAllele] + ')', 'fit');
+};
+document.getElementById('stopBtn').onclick = () => {
+    engine.postMessage({ type: 'stop' });
+    document.getElementById('startBtn').disabled = false;
+    document.getElementById('stopBtn').disabled = true;
+    document.getElementById('status').textContent = 'Stopped';
+    document.getElementById('status').className = 'status';
+};
+
+if (params.get('autostart') === '1') {
+    engine.addEventListener('message', function auto(e) {
+        if (e.data.type === 'ready') { engine.removeEventListener('message', auto); setTimeout(() => document.getElementById('startBtn').click(), 1000); }
+    });
+}
+
+// Device reporting now uses shared device-telemetry.js
+</script>
+</body>
+</html>

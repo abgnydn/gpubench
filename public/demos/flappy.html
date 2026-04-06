@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flappy Evolution — Browser-Native Distributed AI</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0e1a;color:#c8d6e5;font-family:'Inter',system-ui,sans-serif;overflow-x:hidden}
+.hero{text-align:center;padding:24px 20px 12px}
+.hero h1{font-size:1.5rem;font-weight:700;letter-spacing:-0.02em;color:#f1f5f9}
+.hero p{font-size:0.82rem;color:#94a3b8;margin-top:4px;max-width:560px;margin-left:auto;margin-right:auto;line-height:1.5}
+.hl{color:#00d4aa;font-weight:600}
+.controls{display:flex;gap:10px;justify-content:center;margin:10px 0 8px;flex-wrap:wrap}
+.btn{font-family:'Inter',sans-serif;font-size:0.76rem;font-weight:600;padding:8px 18px;border:none;border-radius:6px;cursor:pointer;transition:all 0.15s}
+.btn:disabled{opacity:0.4;cursor:default}
+.accent{background:#00d4aa;color:#0a0e1a}.accent:hover:not(:disabled){background:#00f0c0}
+.outline{background:transparent;border:1px solid #334155;color:#94a3b8}.outline:hover:not(:disabled){border-color:#00d4aa;color:#00d4aa}
+.danger{background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5}
+.game-wrap{position:relative;margin:0 auto;max-width:900px}
+#gameCanvas{display:block;width:100%;height:420px;background:#0c1221;border:1px solid rgba(148,163,184,0.06);border-radius:8px}
+.overlay{position:absolute;pointer-events:none}
+.overlay-tl{top:10px;left:14px}
+.overlay-tr{top:10px;right:14px}
+.score-big{font-family:'JetBrains Mono',monospace;font-size:2.2rem;font-weight:700;color:#00d4aa;text-shadow:0 2px 16px rgba(0,212,170,0.3)}
+.gen-label{font-size:0.7rem;color:#64748b;margin-top:1px}
+.alive-badge{font-family:'JetBrains Mono',monospace;font-size:0.85rem;padding:4px 10px;background:rgba(0,212,170,0.12);border:1px solid rgba(0,212,170,0.2);border-radius:20px;color:#00d4aa}
+.p2p-flash{font-family:'JetBrains Mono',monospace;font-size:0.72rem;color:#f59e0b;opacity:0;transition:opacity 0.3s;margin-top:6px}
+.p2p-flash.show{opacity:1}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:12px 20px;max-width:900px;margin-left:auto;margin-right:auto}
+.panel{background:#111827;border:1px solid rgba(148,163,184,0.08);border-radius:10px;padding:14px}
+.panel-header{font-size:0.62rem;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:#475569;margin-bottom:8px}
+.stat{display:flex;justify-content:space-between;padding:3px 0;font-size:0.76rem}
+.stat-label{color:#64748b}
+.stat-value{font-family:'JetBrains Mono',monospace;font-weight:500;color:#00d4aa}
+.stat-value.amber{color:#f59e0b}
+.stat-value.neutral{color:#94a3b8}
+.stat-value.connected{color:#22c55e}
+.divider{border-top:1px solid rgba(148,163,184,0.06);margin:6px 0}
+#chart{width:100%;height:120px;background:#0c1221;border-radius:6px;margin-top:10px}
+#log{background:#0c1221;border-radius:6px;padding:8px;height:150px;overflow-y:auto;font-family:'JetBrains Mono',monospace;font-size:0.6rem;line-height:1.6;color:#64748b;margin-top:10px}
+#log::-webkit-scrollbar{width:3px}#log::-webkit-scrollbar-thumb{background:#1e293b;border-radius:2px}
+.log-p2p{color:#f59e0b}.log-fit{color:#00d4aa}.log-gpu{color:#a78bfa}
+@media(max-width:700px){.grid{grid-template-columns:1fr}#gameCanvas{height:320px}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <h1>Flappy Evolution</h1>
+  <p>A single <span class="hl">WebGPU kernel</span> evaluates <span class="hl">4,096 birds</span> in parallel — the entire game fused into one GPU dispatch. Open in <span class="hl">another tab</span> to connect via WebRTC and evolve faster together.</p>
+</div>
+
+<div class="controls">
+  <button id="p2pBtn" class="btn outline">Connect P2P</button>
+  <button id="startBtn" class="btn accent" disabled>Initializing GPU...</button>
+  <button id="stopBtn" class="btn danger" disabled>Stop</button>
+</div>
+
+<div class="game-wrap">
+  <canvas id="gameCanvas"></canvas>
+  <div class="overlay overlay-tl">
+    <div class="score-big" id="scoreDisplay">0</div>
+    <div class="gen-label" id="genLabel">Generation 0</div>
+  </div>
+  <div class="overlay overlay-tr">
+    <div class="alive-badge" id="aliveBadge">—</div>
+    <div class="p2p-flash" id="p2pFlash">Genome received!</div>
+  </div>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <div class="panel-header">Evolution Engine</div>
+    <div class="stat"><span class="stat-label">Backend</span><span class="stat-value neutral" id="gpuInfo">WebGPU (initializing...)</span></div>
+    <div class="stat"><span class="stat-label">Generation</span><span class="stat-value" id="gen">0</span></div>
+    <div class="stat"><span class="stat-label">Best Score</span><span class="stat-value" id="fit">0 pipes</span></div>
+    <div class="stat"><span class="stat-label">Speed</span><span class="stat-value" id="speed">—</span></div>
+    <div class="stat"><span class="stat-label">Population</span><span class="stat-value neutral">4,096 per dispatch</span></div>
+    <div class="divider"></div>
+    <canvas id="chart"></canvas>
+  </div>
+  <div class="panel">
+    <div class="panel-header">Peer-to-Peer Network</div>
+    <div class="stat"><span class="stat-label">Transport</span><span class="stat-value neutral">WebRTC DataChannel</span></div>
+    <div class="stat"><span class="stat-label">Status</span><span class="stat-value neutral" id="p2pStatus">Disconnected</span></div>
+    <div class="stat"><span class="stat-label">Room</span><span class="stat-value neutral" id="roomName">—</span></div>
+    <div class="divider"></div>
+    <div class="stat"><span class="stat-label">Genomes Sent</span><span class="stat-value amber" id="sent">0</span></div>
+    <div class="stat"><span class="stat-label">Genomes Received</span><span class="stat-value amber" id="recv">0</span></div>
+    <div class="divider"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+      <span class="stat-label" style="font-size:0.62rem">Event Log</span>
+      <button id="copyLogBtn" class="btn outline" style="padding:2px 8px;font-size:0.58rem">Copy Log</button>
+    </div>
+    <div id="log"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- WEB WORKER: GPU ES Engine (runs off main thread)       -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<script id="worker-script" type="text/worker">
+// ─── WGSL Shader: Flappy Bird physics + NN in one fused kernel ───
+const SHADER_CODE = `
+const NW: u32 = 22u;     // 5*3+3+3*1+1
+const MAX_TICKS: u32 = 800u;
+const GRAVITY: f32 = 0.4;
+const JUMP_VEL: f32 = -6.5;
+const PIPE_GAP: f32 = 120.0;
+const PIPE_WIDTH: f32 = 52.0;
+const BIRD_X: f32 = 80.0;
+const BIRD_R: f32 = 12.0;
+const PIPE_SPEED: f32 = 2.5;
+const PIPE_SPACING: f32 = 200.0;
+const GAME_H: f32 = 420.0;
+const PIPE_GAP_ACTUAL: f32 = 140.0; // wider gap for learning
+
+@group(0) @binding(0) var<storage,read> base_weights: array<f32>;
+@group(0) @binding(1) var<storage,read> seeds: array<u32>;
+@group(0) @binding(2) var<uniform> params: vec4<f32>;
+@group(0) @binding(3) var<storage,read_write> results: array<f32>;
+@group(0) @binding(4) var<storage,read> pipe_data: array<f32>; // [gapY_0, gapY_1, ...]
+
+fn lcg(s: u32) -> u32 { return s * 1664525u + 1013904223u; }
+fn u2f(v: u32) -> f32 { return f32(v >> 8u) / 16777216.0; }
+fn box_muller(u1: f32, u2: f32) -> f32 {
+    return sqrt(-2.0 * log(max(u1, 1e-10))) * cos(6.2831853 * u2);
+}
+
+fn nn_forward(w: ptr<function, array<f32, 22>>, inp: array<f32, 5>) -> f32 {
+    var hidden: array<f32, 3>;
+    for (var h: u32 = 0u; h < 3u; h++) {
+        var sum = (*w)[15u + h];
+        for (var i: u32 = 0u; i < 5u; i++) {
+            sum += (*w)[h * 5u + i] * inp[i];
+        }
+        // tanh
+        let cx = clamp(sum, -10.0, 10.0);
+        let e2 = exp(2.0 * cx);
+        hidden[h] = (e2 - 1.0) / (e2 + 1.0);
+    }
+    var out = (*w)[21u];
+    for (var h: u32 = 0u; h < 3u; h++) {
+        out += (*w)[18u + h] * hidden[h];
+    }
+    // sigmoid
+    return 1.0 / (1.0 + exp(-clamp(out, -10.0, 10.0)));
+}
+
+fn run_episode(w: ptr<function, array<f32, 22>>) -> f32 {
+    var bird_y: f32 = GAME_H * 0.4;
+    var bird_vy: f32 = 0.0;
+    var score: f32 = 0.0;
+    var pipe_idx: u32 = 0u;
+    var alive: bool = true;
+    var last_tick: u32 = 0u;
+
+    for (var tick: u32 = 0u; tick < MAX_TICKS; tick++) {
+        if (!alive) { break; }
+        last_tick = tick;
+
+        // Advance pipe_idx past pipes the bird has passed (accounting for scroll)
+        for (var skip: u32 = 0u; skip < 3u; skip++) {
+            let px = 300.0 + f32(pipe_idx) * PIPE_SPACING - f32(tick) * PIPE_SPEED;
+            if (px + PIPE_WIDTH < BIRD_X && pipe_idx < 99u) {
+                score += 1.0;
+                pipe_idx++;
+            } else { break; }
+        }
+        let pipe_x = 300.0 + f32(pipe_idx) * PIPE_SPACING - f32(tick) * PIPE_SPEED;
+        let gap_y = pipe_data[pipe_idx];
+
+        // NN inputs
+        var inp: array<f32, 5>;
+        inp[0] = bird_y / GAME_H;
+        inp[1] = bird_vy / 10.0;
+        inp[2] = (pipe_x - BIRD_X) / 300.0;
+        inp[3] = gap_y / GAME_H;
+        inp[4] = (gap_y + PIPE_GAP_ACTUAL) / GAME_H;
+
+        let action = nn_forward(w, inp);
+        if (action > 0.5) { bird_vy = JUMP_VEL; }
+
+        bird_vy += GRAVITY;
+        bird_y += bird_vy;
+
+        // Floor / ceiling
+        if (bird_y < BIRD_R || bird_y > GAME_H - BIRD_R) { alive = false; }
+
+        // Pipe collision — check current and next pipe
+        for (var pc: u32 = 0u; pc < 2u; pc++) {
+            let pi = pipe_idx + pc;
+            if (pi >= 100u) { continue; }
+            let ppx = 300.0 + f32(pi) * PIPE_SPACING - f32(tick) * PIPE_SPEED;
+            if (BIRD_X + BIRD_R > ppx && BIRD_X - BIRD_R < ppx + PIPE_WIDTH) {
+                let gy = pipe_data[pi];
+                if (bird_y - BIRD_R < gy || bird_y + BIRD_R > gy + PIPE_GAP_ACTUAL) {
+                    alive = false;
+                }
+            }
+        }
+    }
+    // Fitness: pipes passed + continuous progress toward next pipe
+    // This gives ES gradient signal BETWEEN pipes (not just integer jumps)
+    let next_pipe_x = 300.0 + f32(pipe_idx) * PIPE_SPACING - f32(last_tick) * PIPE_SPEED;
+    let progress = 1.0 - clamp((next_pipe_x - BIRD_X) / PIPE_SPACING, 0.0, 1.0);
+    return score + progress * 0.9 + f32(last_tick) * 0.001;
+}
+
+@compute @workgroup_size(64)
+fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
+    let idx = gid.x;
+    let N = u32(params.x);
+    let sigma = params.y;
+    if (idx >= N) { return; }
+
+    var w_plus: array<f32, 22>;
+    var w_minus: array<f32, 22>;
+    var seed = seeds[idx];
+
+    for (var i: u32 = 0u; i < NW; i++) {
+        seed = lcg(seed);
+        let u1 = u2f(seed);
+        seed = lcg(seed);
+        let u2 = u2f(seed);
+        let eps = box_muller(u1, u2) * sigma;
+        w_plus[i] = base_weights[i] + eps;
+        w_minus[i] = base_weights[i] - eps;
+    }
+
+    let r_plus = run_episode(&w_plus);
+    let r_minus = run_episode(&w_minus);
+    let best = max(r_plus, r_minus);
+
+    results[idx * 3u] = r_plus;
+    results[idx * 3u + 1u] = r_minus;
+    results[idx * 3u + 2u] = best;
+}
+`;
+
+// ─── Engine constants ───
+const NW = 22, N = 4096, SIGMA = 0.15, LR = 0.03;
+const GAME_H = 420, PIPE_GAP = 140, PIPE_SPACING = 200;
+
+let device, pipeline, bindGroupLayout;
+let weightsBuf, seedsBuf, paramsBuf, resultsBuf, readBuf, pipeBuf;
+let baseWeights = new Float32Array(NW);
+for (let i = 0; i < NW; i++) baseWeights[i] = (Math.random() - 0.5) * 1.0;
+let foreignElite = null;
+let bestReward = 0, gen = 0;
+
+// Pipe layout (shared with GPU)
+let pipeGaps = new Float32Array(100);
+function regeneratePipes() {
+    for (let i = 0; i < 100; i++) pipeGaps[i] = 50 + Math.random() * (GAME_H - 100 - PIPE_GAP);
+}
+regeneratePipes();
+
+async function initGPU() {
+    if (!navigator.gpu) { postMessage({ type: 'error', msg: 'WebGPU not available' }); return; }
+    const adapter = await navigator.gpu.requestAdapter();
+    if (!adapter) { postMessage({ type: 'error', msg: 'No GPU adapter' }); return; }
+    device = await adapter.requestDevice();
+
+    const shaderModule = device.createShaderModule({ code: SHADER_CODE });
+
+    bindGroupLayout = device.createBindGroupLayout({
+        entries: [
+            { binding: 0, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'read-only-storage' } },
+            { binding: 1, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'read-only-storage' } },
+            { binding: 2, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'uniform' } },
+            { binding: 3, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'storage' } },
+            { binding: 4, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'read-only-storage' } },
+        ]
+    });
+
+    pipeline = device.createComputePipeline({
+        layout: device.createPipelineLayout({ bindGroupLayouts: [bindGroupLayout] }),
+        compute: { module: shaderModule, entryPoint: 'main' }
+    });
+
+    weightsBuf = device.createBuffer({ size: NW * 4, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST });
+    seedsBuf = device.createBuffer({ size: N * 4, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST });
+    paramsBuf = device.createBuffer({ size: 16, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
+    resultsBuf = device.createBuffer({ size: N * 12, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC });
+    readBuf = device.createBuffer({ size: N * 12, usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ });
+    pipeBuf = device.createBuffer({ size: 100 * 4, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST });
+
+    device.queue.writeBuffer(paramsBuf, 0, new Float32Array([N, SIGMA, 0, 0]));
+
+    postMessage({ type: 'ready', gpu: adapter.info?.description || 'WebGPU' });
+}
+
+async function runGeneration() {
+    if (foreignElite) {
+        // DON'T overwrite — blend foreign elite into current weights (30% foreign, 70% local)
+        // This preserves local exploration while injecting diversity
+        for (let i = 0; i < NW; i++) {
+            baseWeights[i] = baseWeights[i] * 0.7 + foreignElite[i] * 0.3;
+        }
+        foreignElite = null;
+    }
+
+    const seedsData = new Uint32Array(N);
+    for (let i = 0; i < N; i++) seedsData[i] = Math.random() * 0xFFFFFFFF >>> 0;
+
+    device.queue.writeBuffer(weightsBuf, 0, baseWeights);
+    device.queue.writeBuffer(seedsBuf, 0, seedsData);
+    device.queue.writeBuffer(pipeBuf, 0, pipeGaps);
+
+    const bindGroup = device.createBindGroup({
+        layout: bindGroupLayout,
+        entries: [
+            { binding: 0, resource: { buffer: weightsBuf } },
+            { binding: 1, resource: { buffer: seedsBuf } },
+            { binding: 2, resource: { buffer: paramsBuf } },
+            { binding: 3, resource: { buffer: resultsBuf } },
+            { binding: 4, resource: { buffer: pipeBuf } },
+        ]
+    });
+
+    const encoder = device.createCommandEncoder();
+    const pass = encoder.beginComputePass();
+    pass.setPipeline(pipeline);
+    pass.setBindGroup(0, bindGroup);
+    pass.dispatchWorkgroups(Math.ceil(N / 64));
+    pass.end();
+    encoder.copyBufferToBuffer(resultsBuf, 0, readBuf, 0, N * 12);
+    device.queue.submit([encoder.finish()]);
+
+    await readBuf.mapAsync(GPUMapMode.READ);
+    const data = new Float32Array(readBuf.getMappedRange().slice(0));
+    readBuf.unmap();
+
+    // CPU gradient reconstruction
+    const gradients = new Float32Array(NW);
+    let maxReward = 0;
+
+    const lcg = s => (s * 1664525 + 1013904223) >>> 0;
+    const u2f = v => (v >>> 8) / 16777216;
+    const bm = (u1, u2) => Math.sqrt(-2 * Math.log(Math.max(u1, 1e-10))) * Math.cos(6.2831853 * u2);
+
+    for (let i = 0; i < N; i++) {
+        const rPlus = data[i * 3], rMinus = data[i * 3 + 1], best = data[i * 3 + 2];
+        if (best > maxReward) maxReward = best;
+
+        let seed = seedsData[i];
+        for (let w = 0; w < NW; w++) {
+            seed = lcg(seed); const u1 = u2f(seed);
+            seed = lcg(seed); const u2 = u2f(seed);
+            gradients[w] += (rPlus - rMinus) * bm(u1, u2) * SIGMA;
+        }
+    }
+
+    const alpha = LR / (N * SIGMA);
+    for (let w = 0; w < NW; w++) baseWeights[w] += alpha * gradients[w];
+
+    gen++;
+    if (maxReward > bestReward) bestReward = maxReward;
+
+    // New pipes every 100 gens — gives ES time to learn each layout before switching
+    if (gen % 100 === 0) regeneratePipes();
+
+    return maxReward;
+}
+
+// ─── Message handler ───
+let running = false;
+self.onmessage = async (e) => {
+    if (e.data.type === 'start') {
+        running = true;
+        let t0 = performance.now(), gc = 0;
+        while (running) {
+            const score = await runGeneration();
+            gc++;
+            const elapsed = (performance.now() - t0) / 1000;
+            postMessage({
+                type: 'stats',
+                gen, bestFit: bestReward, genScore: score,
+                speed: (gc / Math.max(elapsed, 0.01)).toFixed(1),
+                genome: Array.from(baseWeights),
+                pipeGaps: Array.from(pipeGaps)
+            });
+        }
+    }
+    if (e.data.type === 'stop') { running = false; }
+    if (e.data.type === 'inject') { foreignElite = new Float32Array(e.data.genome); }
+};
+
+initGPU();
+</script>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- Shared P2P module                                      -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<script src="device-telemetry.js"></script>
+<script src="swarm-p2p.js"></script>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- MAIN THREAD: Rendering + P2P                           -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<script>
+const $ = id => document.getElementById(id);
+const canvas = $('gameCanvas');
+const ctx = canvas.getContext('2d');
+const chartCanvas = $('chart');
+const chartCtx = chartCanvas.getContext('2d');
+
+// ─── Game constants (must match shader) ───
+const GRAVITY = 0.4, JUMP_VEL = -6.5, PIPE_GAP = 140, PIPE_WIDTH = 52;
+const BIRD_X = 80, BIRD_R = 12, PIPE_SPEED = 2.5, PIPE_SPACING = 200;
+const NN_WEIGHTS = 22;
+
+let gameW, gameH;
+function resizeCanvas() {
+    const r = window.devicePixelRatio || 1;
+    gameW = canvas.clientWidth; gameH = canvas.clientHeight;
+    canvas.width = gameW * r; canvas.height = gameH * r;
+    ctx.scale(r, r);
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+function log(msg, cls='') {
+    const el = $('log'), d = document.createElement('div');
+    if (cls) d.className = `log-${cls}`;
+    d.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+    el.appendChild(d); el.scrollTop = el.scrollHeight;
+}
+
+// ─── NN forward (CPU) ───
+function nnForward(w, inp) {
+    const hidden = [0,0,0];
+    for (let h = 0; h < 3; h++) {
+        let sum = w[15+h];
+        for (let i = 0; i < 5; i++) sum += w[h*5+i] * inp[i];
+        hidden[h] = Math.tanh(sum);
+    }
+    let out = w[21];
+    for (let h = 0; h < 3; h++) out += w[18+h] * hidden[h];
+    return 1 / (1 + Math.exp(-Math.max(-10, Math.min(10, out))));
+}
+
+// ═══════════════════════════════════════════════════════
+// LIVE FLOCK — 50 birds simulated tick-by-tick on CPU
+// ═══════════════════════════════════════════════════════
+const FLOCK_SIZE = 50;
+const BIRD_COLORS = [];
+for (let i = 0; i < FLOCK_SIZE; i++) {
+    const hue = (i / FLOCK_SIZE) * 300 + 0; // full rainbow: red→yellow→green→cyan→blue→purple
+    const sat = 65 + Math.random() * 20;
+    const lit = 50 + Math.random() * 15;
+    BIRD_COLORS.push(`hsl(${hue}, ${sat}%, ${lit}%)`);
+}
+
+let flock = []; // [{y, vy, alive, score, pipeIdx, weights, color}]
+let flockTick = 0, flockPipes = null;
+let bestScore = 0, bestGenome = null, fitHistory = [];
+let gen = 0, visualGen = 0, foreignBirdColor = null;
+
+function mutateWeights(base, amount) {
+    const w = new Float32Array(base);
+    for (let j = 0; j < NN_WEIGHTS; j++) {
+        if (Math.random() < 0.3) w[j] += (Math.random() - 0.5) * 2 * amount;
+    }
+    return w;
+}
+
+function spawnFlock() {
+    flock = [];
+    flockTick = 0;
+    visualGen++;
+    // Generate new pipes for visual
+    flockPipes = new Float32Array(100);
+    for (let i = 0; i < 100; i++) flockPipes[i] = 60 + Math.random() * (gameH - 160 - PIPE_GAP);
+
+    const base = bestGenome || new Float32Array(NN_WEIGHTS);
+    for (let i = 0; i < FLOCK_SIZE; i++) {
+        // Bird 0 = exact copy of best (elite). Birds 1-9 = small mutations. Birds 10-49 = big mutations.
+        // This creates visible diversity: some birds fly well (near elite), others explore wildly.
+        const mutAmount = i === 0 ? 0 : i < 5 ? 0.15 : i < 15 ? 0.5 : 1.2;
+        const weights = i === 0 && bestGenome ? new Float32Array(bestGenome) : mutateWeights(base, mutAmount);
+        flock.push({
+            y: gameH * 0.4, vy: 0, alive: true, score: 0, pipeIdx: 0,
+            weights,
+            color: i === 0 && bestGenome ? '#00d4aa' : BIRD_COLORS[i],
+            isForeign: false,
+        });
+    }
+}
+
+function tickFlock() {
+    let aliveCount = 0;
+    let bestAliveScore = 0;
+
+    for (const bird of flock) {
+        if (!bird.alive) continue;
+        aliveCount++;
+
+        // Advance pipe
+        for (let skip = 0; skip < 3; skip++) {
+            const px = 300 + bird.pipeIdx * PIPE_SPACING - flockTick * PIPE_SPEED;
+            if (px + PIPE_WIDTH < BIRD_X && bird.pipeIdx < 99) { bird.score++; bird.pipeIdx++; } else break;
+        }
+        const pipeX = 300 + bird.pipeIdx * PIPE_SPACING - flockTick * PIPE_SPEED;
+        const gapY = flockPipes[bird.pipeIdx];
+
+        const inp = [bird.y/gameH, bird.vy/10, (pipeX-BIRD_X)/300, gapY/gameH, (gapY+PIPE_GAP)/gameH];
+        if (nnForward(bird.weights, inp) > 0.5) bird.vy = JUMP_VEL;
+        bird.vy += GRAVITY;
+        bird.y += bird.vy;
+
+        if (bird.y < BIRD_R || bird.y > gameH - BIRD_R) bird.alive = false;
+        for (let pc = 0; pc < 2 && (bird.pipeIdx+pc) < 100; pc++) {
+            const pi = bird.pipeIdx + pc;
+            const ppx = 300 + pi * PIPE_SPACING - flockTick * PIPE_SPEED;
+            if (BIRD_X+BIRD_R > ppx && BIRD_X-BIRD_R < ppx+PIPE_WIDTH) {
+                if (bird.y-BIRD_R < flockPipes[pi] || bird.y+BIRD_R > flockPipes[pi]+PIPE_GAP) bird.alive = false;
+            }
+        }
+        if (bird.score > bestAliveScore) bestAliveScore = bird.score;
+    }
+
+    flockTick++;
+
+    // All dead or max ticks? Restart flock with latest genome from GPU
+    if (aliveCount === 0 || flockTick > 800) {
+        spawnFlock();
+    }
+
+    return { aliveCount, bestAliveScore };
+}
+
+// ─── Worker ───
+const workerBlob = new Blob([document.getElementById('worker-script').textContent], { type: 'text/javascript' });
+const worker = new Worker(URL.createObjectURL(workerBlob));
+
+worker.onmessage = (e) => {
+    const msg = e.data;
+    if (msg.type === 'ready') {
+        $('startBtn').disabled = false;
+        $('startBtn').textContent = 'Start Evolution';
+        $('gpuInfo').textContent = 'WebGPU — ' + msg.gpu;
+        $('gpuInfo').className = 'stat-value';
+        log('GPU pipeline ready — 4,096 birds per dispatch (fused kernel)', 'gpu');
+    }
+    if (msg.type === 'error') {
+        $('startBtn').textContent = msg.msg;
+        log('GPU Error: ' + msg.msg, 'gpu');
+    }
+    if (msg.type === 'stats') {
+        gen = msg.gen;
+        const bestInt = Math.floor(msg.bestFit);
+        $('gen').textContent = gen;
+        $('fit').textContent = bestInt + ' pipes';
+        $('speed').textContent = msg.speed + ' gen/s';
+        $('scoreDisplay').textContent = bestInt;
+        $('genLabel').textContent = `Gen ${gen} (GPU) · Visual round ${visualGen}`;
+
+        bestGenome = new Float32Array(msg.genome);
+
+        fitHistory.push(msg.bestFit);
+        drawChart();
+
+        // Device telemetry (shared module)
+        reportDevice('Flappy Evolution', msg.bestFit, msg.gen, parseFloat(msg.speed));
+
+        // P2P broadcast — only when we improve, to avoid flooding identical genomes
+        if (msg.bestFit > bestScore && bestGenome && p2p) {
+            bestScore = msg.bestFit;
+            p2p.broadcastElite(bestGenome, msg.bestFit);
+        } else if (msg.bestFit > bestScore) {
+            bestScore = msg.bestFit;
+        }
+    }
+};
+
+// ═══════════════════════════════════════════════════════
+// CANVAS RENDERER
+// ═══════════════════════════════════════════════════════
+function drawPipe(gapY, pipeX, alpha) {
+    if (pipeX < -PIPE_WIDTH - 20 || pipeX > gameW + 20) return;
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = '#22c55e';
+    ctx.fillRect(pipeX, 0, PIPE_WIDTH, gapY);
+    ctx.fillStyle = '#16a34a';
+    ctx.fillRect(pipeX - 3, gapY - 18, PIPE_WIDTH + 6, 18);
+    ctx.fillStyle = '#22c55e';
+    ctx.fillRect(pipeX, gapY + PIPE_GAP, PIPE_WIDTH, gameH);
+    ctx.fillStyle = '#16a34a';
+    ctx.fillRect(pipeX - 3, gapY + PIPE_GAP, PIPE_WIDTH + 6, 18);
+    ctx.globalAlpha = 1;
+}
+
+function drawBird(x, y, color, alpha, sz) {
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = color;
+    ctx.beginPath(); ctx.arc(x, y, sz, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.arc(x+sz*0.3, y-sz*0.2, sz*0.25, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#000';
+    ctx.beginPath(); ctx.arc(x+sz*0.35, y-sz*0.2, sz*0.12, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#f97316';
+    ctx.beginPath(); ctx.moveTo(x+sz, y); ctx.lineTo(x+sz+6, y+3); ctx.lineTo(x+sz, y+6); ctx.fill();
+    ctx.globalAlpha = 1;
+}
+
+let started = false;
+
+function drawGame() {
+    ctx.clearRect(0, 0, gameW, gameH);
+    const grad = ctx.createLinearGradient(0, 0, 0, gameH);
+    grad.addColorStop(0, '#0f172a'); grad.addColorStop(1, '#1e293b');
+    ctx.fillStyle = grad; ctx.fillRect(0, 0, gameW, gameH);
+
+    // Ground
+    ctx.fillStyle = '#334155'; ctx.fillRect(0, gameH - 2, gameW, 2);
+
+    if (!started || !flockPipes) {
+        ctx.fillStyle = '#475569'; ctx.font = '14px Inter'; ctx.textAlign = 'center';
+        ctx.fillText('Press Start Evolution', gameW/2, gameH/2);
+        requestAnimationFrame(drawGame);
+        return;
+    }
+
+    // Tick the flock (2 physics steps per frame for faster visual)
+    const { aliveCount, bestAliveScore } = tickFlock();
+    tickFlock();
+
+    // Draw pipes
+    for (let i = 0; i < 100; i++) {
+        const px = 300 + i * PIPE_SPACING - flockTick * PIPE_SPEED;
+        drawPipe(flockPipes[i], px, 0.7);
+    }
+
+    // Draw all birds (back to front: mutations first, elite last on top)
+    for (let i = flock.length - 1; i >= 0; i--) {
+        const bird = flock[i];
+        if (!bird.alive) continue;
+        const isElite = i === 0;
+        const alpha = isElite ? 1 : 0.65;
+        const sz = isElite ? BIRD_R + 2 : 8 + Math.sin(i * 1.7) * 2;
+        const color = bird.isForeign ? '#f59e0b' : bird.color;
+        // Elite gets a glow
+        if (isElite) {
+            ctx.shadowColor = '#00d4aa';
+            ctx.shadowBlur = 12;
+        }
+        drawBird(BIRD_X, bird.y, color, alpha, sz);
+        ctx.shadowBlur = 0;
+    }
+
+    // Dead birds: show small red dots where they died
+    for (const bird of flock) {
+        if (bird.alive) continue;
+        ctx.globalAlpha = 0.15;
+        ctx.fillStyle = '#ef4444';
+        ctx.beginPath(); ctx.arc(BIRD_X, bird.y, 4, 0, Math.PI*2); ctx.fill();
+        ctx.globalAlpha = 1;
+    }
+
+    // Alive counter
+    $('aliveBadge').textContent = `${aliveCount} / ${FLOCK_SIZE} alive`;
+
+    // Live best score on screen
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 28px JetBrains Mono';
+    ctx.textAlign = 'center'; ctx.globalAlpha = 0.2;
+    ctx.fillText(bestAliveScore, gameW/2, 45); ctx.globalAlpha = 1;
+
+    requestAnimationFrame(drawGame);
+}
+drawGame();
+
+// ═══════════════════════════════════════════════════════
+// CHART
+// ═══════════════════════════════════════════════════════
+function drawChart() {
+    const w = chartCanvas.clientWidth, h = chartCanvas.clientHeight;
+    const r = window.devicePixelRatio || 1;
+    chartCanvas.width = w*r; chartCanvas.height = h*r;
+    chartCtx.scale(r, r); chartCtx.clearRect(0, 0, w, h);
+    if (fitHistory.length < 2) return;
+    const data = fitHistory.slice(-200);
+    const minF = Math.min(...data), maxF = Math.max(...data);
+    const range = Math.max(maxF - minF, 1);
+    chartCtx.strokeStyle = '#1e293b'; chartCtx.lineWidth = 0.5;
+    for (let i = 0; i < 4; i++) {
+        const y = h*0.1+(h*0.8/3)*i;
+        chartCtx.beginPath(); chartCtx.moveTo(0,y); chartCtx.lineTo(w,y); chartCtx.stroke();
+    }
+    const gradient = chartCtx.createLinearGradient(0,0,0,h);
+    gradient.addColorStop(0,'rgba(0,212,170,0.2)');gradient.addColorStop(1,'rgba(0,212,170,0)');
+    chartCtx.beginPath(); chartCtx.moveTo(0,h);
+    for (let i = 0; i < data.length; i++) {
+        chartCtx.lineTo((i/(data.length-1))*w, h-((data[i]-minF)/range)*h*0.8-h*0.1);
+    }
+    chartCtx.lineTo(w,h); chartCtx.fillStyle = gradient; chartCtx.fill();
+    chartCtx.beginPath();
+    for (let i = 0; i < data.length; i++) {
+        const x=(i/(data.length-1))*w, y=h-((data[i]-minF)/range)*h*0.8-h*0.1;
+        i===0?chartCtx.moveTo(x,y):chartCtx.lineTo(x,y);
+    }
+    chartCtx.strokeStyle='#00d4aa';chartCtx.lineWidth=1.5;chartCtx.stroke();
+    chartCtx.fillStyle='#64748b';chartCtx.font='10px JetBrains Mono';chartCtx.textAlign='left';
+    chartCtx.fillText(Math.floor(maxF)+' pipes',4,12);chartCtx.fillText(Math.floor(minF)+' pipes',4,h-4);
+}
+
+// ═══════════════════════════════════════════════════════
+// P2P (uses shared swarm-p2p.js module)
+// ═══════════════════════════════════════════════════════
+let p2p = null;
+
+function initP2P(room) {
+    p2p = new SwarmP2P({
+        defaultRoom: room || 'flappy-demo',
+        genomeSize: 22,
+        onEliteReceived: (genome, fitness, from) => {
+            // Inject into GPU engine
+            worker.postMessage({ type: 'inject', genome: Array.from(genome) });
+            // Show as golden bird in visual flock
+            if (flock.length > 0) {
+                const bird = flock[flock.length - 1];
+                bird.weights = new Float32Array(genome);
+                bird.y = gameH * 0.4; bird.vy = 0; bird.alive = true;
+                bird.score = 0; bird.pipeIdx = 0;
+                bird.color = '#f59e0b'; bird.isForeign = true;
+            }
+            $('p2pFlash').classList.add('show');
+            setTimeout(() => $('p2pFlash').classList.remove('show'), 1500);
+        },
+        onStatusChange: (status) => {
+            $('roomName').textContent = status.room || '—';
+            $('sent').textContent = status.sent;
+            $('recv').textContent = status.received;
+            if (status.peers > 0) {
+                $('p2pStatus').textContent = status.peers + ' peer' + (status.peers > 1 ? 's' : '') + ' linked';
+                $('p2pStatus').className = 'stat-value connected';
+            } else if (status.signalingConnected) {
+                $('p2pStatus').textContent = 'Waiting for peers';
+                $('p2pStatus').className = 'stat-value neutral';
+            } else {
+                $('p2pStatus').textContent = 'Disconnected';
+                $('p2pStatus').className = 'stat-value neutral';
+            }
+        },
+        onLog: (msg, cls) => log(msg, cls),
+    });
+    p2p.connect(room);
+    $('p2pBtn').textContent = 'Connecting...';
+    $('p2pBtn').disabled = true;
+}
+
+// ═══════════════════════════════════════════════════════
+// UI
+// ═══════════════════════════════════════════════════════
+$('startBtn').onclick = () => {
+    $('startBtn').disabled = true; $('stopBtn').disabled = false;
+    started = true;
+    spawnFlock();
+    worker.postMessage({ type: 'start' });
+    log('Evolution started — fused Flappy Bird kernel on GPU', 'gpu');
+};
+$('stopBtn').onclick = () => {
+    worker.postMessage({ type: 'stop' });
+    $('startBtn').disabled = false; $('stopBtn').disabled = true;
+    log('Paused', 'gpu');
+};
+$('p2pBtn').onclick = () => {
+    const params = new URLSearchParams(window.location.search);
+    initP2P(params.get('room') || 'flappy-demo');
+};
+
+// Auto-connect
+const params = new URLSearchParams(window.location.search);
+if (params.has('room') || params.has('sig')) {
+    setTimeout(() => initP2P(params.get('room')), 300);
+}
+if (params.get('autostart') === '1') {
+    setTimeout(() => $('startBtn').click(), 1000);
+}
+
+// Copy log button
+$('copyLogBtn').onclick = () => {
+    const logEl = $('log');
+    const text = Array.from(logEl.children).map(d => d.textContent).join('\n');
+    navigator.clipboard.writeText(text).then(() => {
+        $('copyLogBtn').textContent = 'Copied!';
+        setTimeout(() => { $('copyLogBtn').textContent = 'Copy Log'; }, 1500);
+    });
+};
+</script>
+</body>
+</html>

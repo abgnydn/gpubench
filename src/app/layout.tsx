@@ -12,7 +12,7 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://gpubench.dev"),
   title: "WebGPU Bench — How fast is your GPU in the browser?",
   description:
-    "Run real WebGPU compute benchmarks. Kernel fusion achieves 159-720x over PyTorch on the same GPU. No install — just click Run.",
+    "Run real WebGPU compute benchmarks. 487 devices tested — kernel fusion averages 4,081x on Apple Silicon, 826x on phones. No install — just click Run.",
   keywords: [
     "WebGPU",
     "benchmark",
@@ -25,16 +25,16 @@ export const metadata: Metadata = {
   openGraph: {
     title: "WebGPU Bench — How fast is your GPU in the browser?",
     description:
-      "Kernel fusion: 159x (WebGPU) to 720x (CUDA) over PyTorch on the same GPU. Test yours — no install required.",
+      "487 devices tested. Kernel fusion: 4,081x on Apple Silicon, 826x on phones. Test yours — no install required.",
     type: "website",
     url: "https://gpubench.dev",
     siteName: "WebGPU Bench",
-    images: [{ url: "/og.png", width: 1200, height: 630, alt: "WebGPU Bench — 159-720x over PyTorch via kernel fusion" }],
+    images: [{ url: "/og.png", width: 1200, height: 630, alt: "WebGPU Bench — 4,081x Apple Silicon, 826x phones, 487 devices" }],
   },
   twitter: {
     card: "summary_large_image",
     title: "WebGPU Bench — How fast is your GPU in the browser?",
-    description: "Kernel fusion: 159x (WebGPU) to 720x (CUDA) over PyTorch on the same GPU. No install required.",
+    description: "487 devices tested. Kernel fusion: 4,081x on Apple Silicon, 826x on phones. No install required.",
     images: ["/og.png"],
   },
 };

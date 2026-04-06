@@ -60,6 +60,21 @@ export async function GET(request: Request) {
       `ALTER TABLE benchmark_runs ADD COLUMN IF NOT EXISTS montecarlo_min REAL`,
       `ALTER TABLE benchmark_runs ADD COLUMN IF NOT EXISTS montecarlo_max REAL`,
       `ALTER TABLE benchmark_runs ADD COLUMN IF NOT EXISTS montecarlo_std REAL`,
+      // Device telemetry from P2P demos
+      `CREATE TABLE IF NOT EXISTS device_sessions (
+        id              SERIAL PRIMARY KEY,
+        created_at      TIMESTAMP DEFAULT NOW(),
+        device_id       TEXT NOT NULL,
+        device_name     TEXT DEFAULT '',
+        gpu             TEXT DEFAULT '',
+        workload        TEXT NOT NULL,
+        fitness         REAL,
+        gen             INT,
+        speed           REAL,
+        browser         TEXT DEFAULT '',
+        os              TEXT DEFAULT '',
+        is_mobile       BOOLEAN DEFAULT false
+      )`,
       // Transformer benchmark table
       `CREATE TABLE IF NOT EXISTS transformer_runs (
         id              TEXT PRIMARY KEY,

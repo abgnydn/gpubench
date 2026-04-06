@@ -109,8 +109,39 @@ export async function POST(request: Request) {
   }
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const { searchParams } = new URL(request.url);
+    const all = searchParams.get("all") === "true";
+
+    if (all) {
+      const page = Math.max(1, Number(searchParams.get("page") ?? 1));
+      const limit = 100;
+      const offset = (page - 1) * limit;
+
+      const totalResult = await sql`SELECT COUNT(*) as count FROM benchmark_runs`;
+      const total = Number(totalResult.rows[0]?.["count"] ?? 0);
+
+      const rows = await sql`
+        SELECT gpu_name, gpu_vendor, gpu_arch, score,
+               rastrigin_gps, nbody_gps, acrobot_gps, mountaincar_gps, montecarlo_gps,
+               browser, os, is_mobile, created_at
+        FROM benchmark_runs
+        ORDER BY created_at DESC
+        LIMIT ${limit} OFFSET ${offset}
+      `;
+
+      const response = NextResponse.json({
+        total,
+        page,
+        totalPages: Math.ceil(total / limit),
+        rows: rows.rows,
+      });
+      response.headers.set("Cache-Control", "public, s-maxage=30, stale-while-revalidate=60");
+      response.headers.set("Access-Control-Allow-Origin", "*");
+      return response;
+    }
+
     const totalResult = await sql`SELECT COUNT(*) as count FROM benchmark_runs`;
     const total = Number(totalResult.rows[0]?.["count"] ?? 0);
 
@@ -148,6 +179,7 @@ export async function GET() {
     });
 
     response.headers.set("Cache-Control", "public, s-maxage=30, stale-while-revalidate=60");
+    response.headers.set("Access-Control-Allow-Origin", "*");
     return response;
   } catch {
     return NextResponse.json({ total: 0, averages: {}, topGpus: [], recent: [] });
