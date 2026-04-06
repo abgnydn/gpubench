@@ -234,8 +234,12 @@ export default function WhyPage() {
           </p>
           <div className="flex flex-wrap gap-3 justify-center">
             <a href="/" className="btn-primary">Run the Benchmark</a>
+            <a href="/results" className="btn-secondary">All Results (Open Data)</a>
             <a href={LINKS.ecDoi} className="btn-secondary">Read the Preprint</a>
           </div>
+          <p className="text-xs text-bench-muted/50 mt-4">
+            Every result from every device is public. No cherry-picking. Verify any claim yourself.
+          </p>
         </section>
 
       </div>

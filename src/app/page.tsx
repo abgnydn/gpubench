@@ -283,6 +283,9 @@ export default function HomePage() {
           <a href="/swarm" className="px-4 py-2 rounded-md text-sm font-medium text-bench-muted hover:text-bench-text transition">
             Distributed P2P
           </a>
+          <a href="/results" className="px-4 py-2 rounded-md text-sm font-medium text-bench-muted hover:text-bench-text transition">
+            All Results
+          </a>
         </div>
         <h1 className="text-4xl md:text-5xl font-bold tracking-tight leading-[1.1] mb-4">
           How fast is your GPU
@@ -381,6 +384,23 @@ export default function HomePage() {
           doi={LINKS.ecDoi}
           doiLabel={LINKS.ecDoiShort}
         />
+
+        {/* Open data */}
+        <div className="card border-bench-accent/10 mt-4">
+          <div className="flex items-start gap-3">
+            <span className="text-xl">&#x1F4CA;</span>
+            <div className="flex-1">
+              <h3 className="font-semibold text-bench-text text-sm mb-1">Every result is public</h3>
+              <p className="text-xs text-bench-muted leading-relaxed mb-2">
+                We don&apos;t cherry-pick. Every benchmark run from every device is published &mdash; GPU name, score, browser,
+                OS, timestamp. No data is hidden. Verify any claim yourself.
+              </p>
+              <a href="/results" className="text-xs font-medium text-bench-accent hover:underline">
+                Browse all results &rarr;
+              </a>
+            </div>
+          </div>
+        </div>
       </main>
 
       {/* Footer */}
