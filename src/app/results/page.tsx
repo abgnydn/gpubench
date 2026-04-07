@@ -127,35 +127,41 @@ export default function ResultsPage() {
   const [sortField, setSortField] = useState("created_at");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
 
-  const fetchCompute = useCallback(async (page: number) => {
+  const fetchCompute = useCallback(async (page: number, sort?: string, dir?: string) => {
     try {
-      const res = await fetch(`/api/results?all=true&page=${page}`);
+      const s = sort ?? sortField;
+      const d = dir ?? sortDir;
+      const res = await fetch(`/api/results?all=true&page=${page}&sort=${s}&dir=${d}`);
       const json = await res.json();
       setComputeRows(json.rows ?? []);
       setComputeTotal(json.total ?? 0);
       setComputePages(json.totalPages ?? 1);
     } catch { /* */ }
-  }, []);
+  }, [sortField, sortDir]);
 
-  const fetchTransformer = useCallback(async (page: number) => {
+  const fetchTransformer = useCallback(async (page: number, sort?: string, dir?: string) => {
     try {
-      const res = await fetch(`/api/transformer-results?all=true&page=${page}`);
+      const s = sort ?? sortField;
+      const d = dir ?? sortDir;
+      const res = await fetch(`/api/transformer-results?all=true&page=${page}&sort=${s}&dir=${d}`);
       const json = await res.json();
       setTransformerRows(json.rows ?? []);
       setTransformerTotal(json.total ?? 0);
       setTransformerPages(json.totalPages ?? 1);
     } catch { /* */ }
-  }, []);
+  }, [sortField, sortDir]);
 
-  const fetchDemos = useCallback(async (page: number) => {
+  const fetchDemos = useCallback(async (page: number, sort?: string, dir?: string) => {
     try {
-      const res = await fetch(`/api/device?all=true&page=${page}`);
+      const s = sort ?? sortField;
+      const d = dir ?? sortDir;
+      const res = await fetch(`/api/device?all=true&page=${page}&sort=${s}&dir=${d}`);
       const json = await res.json();
       setDemoRows(json.rows ?? []);
       setDemoTotal(json.total ?? 0);
       setDemoPages(json.totalPages ?? 1);
     } catch { /* */ }
-  }, []);
+  }, [sortField, sortDir]);
 
   useEffect(() => {
     setLoading(true);
@@ -165,17 +171,19 @@ export default function ResultsPage() {
   }, [fetchCompute, fetchTransformer, fetchDemos]);
 
   const handleSort = (field: string) => {
-    if (sortField === field) {
-      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-    } else {
-      setSortField(field);
-      setSortDir("desc");
-    }
+    const newDir = sortField === field ? (sortDir === "asc" ? "desc" : "asc") : "desc";
+    setSortField(field);
+    setSortDir(newDir as SortDir);
+    // Refetch current tab from server with new sort
+    if (tab === "compute") fetchCompute(computePage, field, newDir);
+    else if (tab === "transformer") fetchTransformer(transformerPage, field, newDir);
+    else fetchDemos(demoPage, field, newDir);
   };
+
 
   const filteredCompute = useMemo(() => {
     const q = search.toLowerCase();
-    const filtered = q
+    return q
       ? computeRows.filter(
           (r) =>
             r.gpu_name?.toLowerCase().includes(q) ||
@@ -184,20 +192,11 @@ export default function ResultsPage() {
             r.os?.toLowerCase().includes(q),
         )
       : computeRows;
-    return [...filtered].sort((a, b) => {
-      const aVal = (a as unknown as Record<string, unknown>)[sortField];
-      const bVal = (b as unknown as Record<string, unknown>)[sortField];
-      const aNum = typeof aVal === "number" ? aVal : typeof aVal === "string" ? aVal : 0;
-      const bNum = typeof bVal === "number" ? bVal : typeof bVal === "string" ? bVal : 0;
-      if (aNum < bNum) return sortDir === "asc" ? -1 : 1;
-      if (aNum > bNum) return sortDir === "asc" ? 1 : -1;
-      return 0;
-    });
-  }, [computeRows, search, sortField, sortDir]);
+  }, [computeRows, search]);
 
   const filteredTransformer = useMemo(() => {
     const q = search.toLowerCase();
-    const filtered = q
+    return q
       ? transformerRows.filter(
           (r) =>
             r.gpu_name?.toLowerCase().includes(q) ||
@@ -206,20 +205,11 @@ export default function ResultsPage() {
             r.os?.toLowerCase().includes(q),
         )
       : transformerRows;
-    return [...filtered].sort((a, b) => {
-      const aVal = (a as unknown as Record<string, unknown>)[sortField];
-      const bVal = (b as unknown as Record<string, unknown>)[sortField];
-      const aNum = typeof aVal === "number" ? aVal : typeof aVal === "string" ? aVal : 0;
-      const bNum = typeof bVal === "number" ? bVal : typeof bVal === "string" ? bVal : 0;
-      if (aNum < bNum) return sortDir === "asc" ? -1 : 1;
-      if (aNum > bNum) return sortDir === "asc" ? 1 : -1;
-      return 0;
-    });
-  }, [transformerRows, search, sortField, sortDir]);
+  }, [transformerRows, search]);
 
   const filteredDemos = useMemo(() => {
     const q = search.toLowerCase();
-    const filtered = q
+    return q
       ? demoRows.filter(
           (r) =>
             r.gpu?.toLowerCase().includes(q) ||
@@ -229,16 +219,7 @@ export default function ResultsPage() {
             r.os?.toLowerCase().includes(q),
         )
       : demoRows;
-    return [...filtered].sort((a, b) => {
-      const aVal = (a as unknown as Record<string, unknown>)[sortField];
-      const bVal = (b as unknown as Record<string, unknown>)[sortField];
-      const aNum = typeof aVal === "number" ? aVal : typeof aVal === "string" ? aVal : 0;
-      const bNum = typeof bVal === "number" ? bVal : typeof bVal === "string" ? bVal : 0;
-      if (aNum < bNum) return sortDir === "asc" ? -1 : 1;
-      if (aNum > bNum) return sortDir === "asc" ? 1 : -1;
-      return 0;
-    });
-  }, [demoRows, search, sortField, sortDir]);
+  }, [demoRows, search]);
 
   const handleComputePage = (p: number) => {
     setComputePage(p);

@@ -119,17 +119,26 @@ export async function GET(request: Request) {
       const limit = 100;
       const offset = (page - 1) * limit;
 
+      const ALLOWED_SORT = new Set([
+        "created_at", "score", "gpu_name", "gpu_vendor",
+        "rastrigin_gps", "nbody_gps", "acrobot_gps", "mountaincar_gps", "montecarlo_gps",
+      ]);
+      const sortParam = searchParams.get("sort") ?? "created_at";
+      const sortCol = ALLOWED_SORT.has(sortParam) ? sortParam : "created_at";
+      const sortDir = searchParams.get("dir") === "asc" ? "ASC" : "DESC";
+
       const totalResult = await sql`SELECT COUNT(*) as count FROM benchmark_runs`;
       const total = Number(totalResult.rows[0]?.["count"] ?? 0);
 
-      const rows = await sql`
-        SELECT gpu_name, gpu_vendor, gpu_arch, score,
-               rastrigin_gps, nbody_gps, acrobot_gps, mountaincar_gps, montecarlo_gps,
-               browser, os, is_mobile, created_at
-        FROM benchmark_runs
-        ORDER BY created_at DESC
-        LIMIT ${limit} OFFSET ${offset}
-      `;
+      const rows = await sql.query(
+        `SELECT gpu_name, gpu_vendor, gpu_arch, score,
+                rastrigin_gps, nbody_gps, acrobot_gps, mountaincar_gps, montecarlo_gps,
+                browser, os, is_mobile, created_at
+         FROM benchmark_runs
+         ORDER BY ${sortCol} ${sortDir} NULLS LAST
+         LIMIT $1 OFFSET $2`,
+        [limit, offset],
+      );
 
       const response = NextResponse.json({
         total,

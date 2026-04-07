@@ -106,18 +106,28 @@ export async function GET(request: Request) {
       const limit = 100;
       const offset = (page - 1) * limit;
 
+      const ALLOWED_SORT = new Set([
+        "created_at", "gpu_name", "config", "d_model", "layers",
+        "unfused_ms", "fused_1t_ms", "parallel_ms",
+        "speedup_1t", "speedup_parallel", "tokens_per_sec",
+      ]);
+      const sortParam = searchParams.get("sort") ?? "created_at";
+      const sortCol = ALLOWED_SORT.has(sortParam) ? sortParam : "created_at";
+      const sortDir = searchParams.get("dir") === "asc" ? "ASC" : "DESC";
+
       const totalResult = await sql`SELECT COUNT(*) as count FROM transformer_runs`;
       const total = Number(totalResult.rows[0]?.["count"] ?? 0);
 
-      const rows = await sql`
-        SELECT gpu_name, gpu_vendor, gpu_arch, config, layers, d_model, dispatches,
-               unfused_ms, fused_1t_ms, parallel_ms,
-               speedup_1t, speedup_parallel, tokens_per_sec,
-               browser, os, is_mobile, created_at
-        FROM transformer_runs
-        ORDER BY created_at DESC
-        LIMIT ${limit} OFFSET ${offset}
-      `;
+      const rows = await sql.query(
+        `SELECT gpu_name, gpu_vendor, gpu_arch, config, layers, d_model, dispatches,
+                unfused_ms, fused_1t_ms, parallel_ms,
+                speedup_1t, speedup_parallel, tokens_per_sec,
+                browser, os, is_mobile, created_at
+         FROM transformer_runs
+         ORDER BY ${sortCol} ${sortDir} NULLS LAST
+         LIMIT $1 OFFSET $2`,
+        [limit, offset],
+      );
 
       const response = NextResponse.json({
         total,
