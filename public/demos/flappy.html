@@ -46,6 +46,7 @@
 <p class="explain">
   One bird plays at normal speed using the best brain the GPU has found so far.
   The GPU evaluates <strong class="hl-num" id="popLabel">4,096</strong> birds per generation in the background — you just see the smartest one.
+  Max score: <strong style="color:#94a3b8">125 pipes</strong> (GPU training limit).
 </p>
 <div class="game-wrap">
   <canvas id="gameCanvas" class="game-canvas"></canvas>
@@ -94,7 +95,7 @@
 // ─── WGSL Shader: Flappy Bird physics + NN in one fused kernel ───
 const SHADER_CODE = `
 const NW: u32 = 22u;     // 5*3+3+3*1+1
-const MAX_TICKS: u32 = 2000u;
+const MAX_TICKS: u32 = 10000u; // ~125 pipes max per episode
 const GRAVITY: f32 = 0.4;
 const JUMP_VEL: f32 = -6.5;
 const PIPE_GAP: f32 = 120.0;
@@ -569,8 +570,7 @@ function tickBird() {
     }
 
     replayTick++;
-    // Cap at same limit as GPU training (MAX_TICKS=2000 ≈ 25 pipes)
-    if (!bird.alive || replayTick > 2000) respawnBird();
+    if (!bird.alive || livePipes >= 125) respawnBird();
 }
 
 // ─── Worker ───
