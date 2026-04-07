@@ -260,7 +260,7 @@ export default function SwarmPage() {
               Paper 1: Kernel Fusion
             </a>
             <a
-              href="https://kernelfusion.dev"
+              href="https://github.com/abgnydn/webgpu-p2p-evolution"
               className="text-xs font-medium px-3 py-1.5 rounded-md bg-bench-green/10 text-bench-green hover:bg-bench-green/20 transition"
             >
               P2P Code on GitHub
