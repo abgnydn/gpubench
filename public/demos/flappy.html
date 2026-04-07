@@ -569,7 +569,8 @@ function tickBird() {
     }
 
     replayTick++;
-    if (!bird.alive || replayTick > 5000) respawnBird();
+    // Cap at same limit as GPU training (MAX_TICKS=2000 ≈ 25 pipes)
+    if (!bird.alive || replayTick > 2000) respawnBird();
 }
 
 // ─── Worker ───
