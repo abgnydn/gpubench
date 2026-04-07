@@ -118,9 +118,9 @@ export default function SwarmPage() {
         <div className="card">
           <div className="flex items-center gap-2 mb-4">
             <span className="text-[10px] font-medium uppercase tracking-wider px-2 py-0.5 rounded-full bg-bench-accent/10 text-bench-accent">
-              Paper 3
+              Open Source
             </span>
-            <span className="text-xs text-bench-muted">Browser-to-Browser Evolutionary Computation</span>
+            <span className="text-xs text-bench-muted">Browser-to-Browser Distributed Evolution</span>
           </div>
           <div className="grid grid-cols-3 gap-2">
             {PAPER_RESULTS.map((r) => (
@@ -263,7 +263,7 @@ export default function SwarmPage() {
               href="https://kernelfusion.dev"
               className="text-xs font-medium px-3 py-1.5 rounded-md bg-bench-green/10 text-bench-green hover:bg-bench-green/20 transition"
             >
-              Paper 3: WebRTC P2P
+              P2P Code on GitHub
             </a>
           </div>
         </div>
