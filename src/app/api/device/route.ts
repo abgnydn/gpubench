@@ -89,10 +89,10 @@ export async function POST(request: Request) {
 }
 
 export async function GET(request: Request) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const all = searchParams.get("all") === "true";
+  const { searchParams } = new URL(request.url);
+  const all = searchParams.get("all") === "true";
 
+  try {
     if (all) {
       const page = Math.max(1, Number(searchParams.get("page") ?? 1));
       const limit = 100;
@@ -169,13 +169,22 @@ export async function GET(request: Request) {
     );
     response.headers.set("Access-Control-Allow-Origin", "*");
     return response;
-  } catch {
-    return NextResponse.json({
-      total: 0,
-      devices: 0,
-      workloads: [],
-      recent: [],
-    });
+  } catch (err) {
+    // Previously this catch silently returned the aggregate-shape empty
+    // payload for BOTH branches, which masked schema/connection failures as
+    // "no data." Log loudly, return a 500, and match the shape of whichever
+    // branch was requested so clients don't crash on `json.rows`/`json.recent`.
+    console.error("Device GET error:", err);
+    if (all) {
+      return NextResponse.json(
+        { total: 0, page: 1, totalPages: 0, rows: [], error: "Failed" },
+        { status: 500 },
+      );
+    }
+    return NextResponse.json(
+      { total: 0, devices: 0, workloads: [], recent: [], error: "Failed" },
+      { status: 500 },
+    );
   }
 }
 

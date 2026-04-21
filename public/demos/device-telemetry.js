@@ -60,6 +60,12 @@ function reportDevice(workload, fitness, gen, speed) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
-    }).catch(() => {});
+    })
+      .then(r => {
+        // Surface non-2xx responses (e.g. missing table, rate limit, bad body)
+        // so failures are visible in devtools instead of silently swallowed.
+        if (!r.ok) console.error('[device-telemetry] save failed:', r.status, r.statusText);
+      })
+      .catch(e => console.error('[device-telemetry] network error:', e));
   });
 }
