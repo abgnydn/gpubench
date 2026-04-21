@@ -5,6 +5,7 @@ import { GpuInfoCard } from "@/components/gpu-info-card";
 import type { GpuInfo } from "@/lib/gpu-detect";
 import { LINKS } from "@/lib/constants";
 import { PaperCard } from "@/components/paper-card";
+import { TabSwitcher } from "@/components/tab-switcher";
 
 interface BenchResult {
   label: string;
@@ -144,20 +145,7 @@ export default function TransformerPage() {
         </div>
 
         {/* Tab Switcher */}
-        <div className="inline-flex rounded-lg bg-bench-surface border border-bench-border p-1 mb-8">
-          <a href="/" className="px-4 py-2 rounded-md text-sm font-medium text-bench-muted hover:text-bench-text transition">
-            GPU Compute
-          </a>
-          <span className="px-4 py-2 rounded-md text-sm font-medium bg-bench-accent/10 text-bench-accent">
-            Transformer Fusion
-          </span>
-          <a href="/swarm" className="px-4 py-2 rounded-md text-sm font-medium text-bench-muted hover:text-bench-text transition">
-            Distributed P2P
-          </a>
-          <a href="/demos/zerotvm-chat.html" className="px-4 py-2 rounded-md text-sm font-medium text-bench-muted hover:text-bench-text transition">
-            Zero-TVM
-          </a>
-        </div>
+        <TabSwitcher />
 
         <h1 className="text-3xl md:text-4xl font-bold tracking-tight leading-[1.1] mb-3">
           Transformer Fusion{" "}

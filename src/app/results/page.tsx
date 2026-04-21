@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { LINKS } from "@/lib/constants";
 import { ShareButtons } from "@/components/share-buttons";
+import { TabSwitcher } from "@/components/tab-switcher";
 
 type SortDir = "asc" | "desc";
 type Tab = "compute" | "transformer" | "demos";
@@ -287,20 +288,20 @@ export default function ResultsPage() {
       </div>
 
       <div className="max-w-6xl mx-auto px-6">
-        {/* Nav */}
-        <nav className="flex items-center justify-between py-6">
-          <a href="/" className="flex items-center gap-2 text-sm text-bench-muted hover:text-bench-text transition">
-            <svg className="w-4 h-4 text-bench-accent" viewBox="0 0 32 32" fill="none">
+        {/* Nav — shared chrome across all top-level pages */}
+        <header className="pt-8 pb-2 text-center">
+          <div className="flex items-center justify-center gap-2 mb-6">
+            <svg className="w-5 h-5 text-bench-accent animate-spin-slow" viewBox="0 0 32 32" fill="none">
               <circle cx="16" cy="16" r="14" stroke="currentColor" strokeWidth="2.5" strokeDasharray="60 28" strokeLinecap="round"/>
               <circle cx="16" cy="16" r="2.5" fill="currentColor"/>
             </svg>
-            <span className="font-semibold text-bench-text">WebGPU Bench</span>
-          </a>
-          <a href="/" className="text-sm text-bench-accent hover:underline">Run benchmarks &rarr;</a>
-        </nav>
+            <span className="font-bold text-bench-text">WebGPU Bench</span>
+          </div>
+          <TabSwitcher />
+        </header>
 
         {/* Header */}
-        <header className="pt-8 pb-6">
+        <header className="pb-6">
           <h1 className="text-3xl font-extrabold tracking-tight mb-2">All Results</h1>
           <p className="text-bench-muted text-sm">
             Every benchmark run from every device. {allTotal > 0

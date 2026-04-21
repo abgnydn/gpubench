@@ -1,5 +1,7 @@
 "use client";
 
+import { TabSwitcher } from "@/components/tab-switcher";
+
 const DEMOS = [
   {
     id: "flappy",
@@ -88,20 +90,7 @@ export default function SwarmPage() {
         </div>
 
         {/* Tab Switcher */}
-        <div className="inline-flex rounded-lg bg-bench-surface border border-bench-border p-1 mb-8">
-          <a href="/" className="px-4 py-2 rounded-md text-sm font-medium text-bench-muted hover:text-bench-text transition">
-            GPU Compute
-          </a>
-          <a href="/transformer" className="px-4 py-2 rounded-md text-sm font-medium text-bench-muted hover:text-bench-text transition">
-            Transformer Fusion
-          </a>
-          <span className="px-4 py-2 rounded-md text-sm font-medium bg-bench-accent/10 text-bench-accent">
-            Distributed P2P
-          </span>
-          <a href="/demos/zerotvm-chat.html" className="px-4 py-2 rounded-md text-sm font-medium text-bench-muted hover:text-bench-text transition">
-            Zero-TVM
-          </a>
-        </div>
+        <TabSwitcher />
 
         <h1 className="text-3xl md:text-4xl font-bold tracking-tight leading-[1.1] mb-3">
           Distributed Evolution{" "}

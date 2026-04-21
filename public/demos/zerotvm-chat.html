@@ -5,157 +5,205 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Zero-TVM Chat — WebGPU Bench</title>
   <meta name="description" content="Chat with Phi-3-mini (3.6B) running entirely on your GPU. 10 hand-written WGSL shaders, no TVM runtime. Reports decode throughput to WebGPU Bench.">
-  <meta name="theme-color" content="#0a0a0a">
+  <meta name="theme-color" content="#0a0e1a">
   <link rel="icon" href="/demos/zerotvm/favicon.svg" type="image/svg+xml">
   <meta property="og:url" content="https://gpubench.dev/demos/zerotvm-chat.html">
   <meta property="og:title" content="Zero-TVM Chat — WebGPU Bench">
   <meta property="og:description" content="Chat with Phi-3-mini running on 10 WGSL shaders. See your device's decode tok/s on the results page.">
   <meta name="twitter:card" content="summary_large_image">
+  <!-- Shared demo typography/nav palette — keeps zero-tvm visually coherent
+       with the Flappy / Rastrigin / PETase / Neoantigen demos. -->
+  <link rel="stylesheet" href="/demos/demo-shared.css">
   <!-- Gpubench device telemetry. Defines window.reportDevice, which the
        bundled chat code calls at the end of every generation. Load BEFORE
        the module script so the global is defined when generation finishes. -->
   <script src="/demos/device-telemetry.js"></script>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
+    /* Page shell — chat needs flex column + pinned input, which demo-shared
+       doesn't cover. Palette is inherited from demo-shared for consistency. */
+    html, body { height: 100%; }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      background: #0a0a0a; color: #e0e0e0;
-      height: 100vh; display: flex; flex-direction: column;
+      display: flex; flex-direction: column;
+      min-height: 100vh;
     }
 
-    /* ---- Top bar ---- */
-    .topbar {
-      display: flex; align-items: center; gap: 0.75rem;
-      padding: 0.75rem 1.25rem;
-      border-bottom: 1px solid #1a1a1a;
-      background: #0d0d0d;
-      flex-shrink: 0;
+    /* ---- Nav (extends .demo-nav from demo-shared.css) ---- */
+    .demo-nav { flex-shrink: 0; border-bottom: 1px solid rgba(148,163,184,0.06); }
+    .demo-nav .nav-right {
+      display: flex; align-items: center; gap: 14px; margin-left: auto;
     }
-    .topbar a { color: #555; text-decoration: none; font-size: 0.9rem; transition: color 0.15s; }
-    .topbar a:hover { color: #aaa; }
-    .topbar h1 { font-size: 0.95rem; font-weight: 600; color: #ddd; }
-    .badge {
-      font-size: 0.68rem; font-weight: 600; letter-spacing: 0.02em;
-      padding: 0.2rem 0.6rem; border-radius: 10px;
-      background: #1a1a1a; color: #555;
+    .demo-nav .stats {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.7rem; color: #475569;
     }
-    .badge.ready { background: #0d3320; color: #10b981; }
-    .badge.loading { background: #332b00; color: #eab308; }
-    .badge.error { background: #331111; color: #ef4444; }
-    .stats {
-      margin-left: auto;
-      font-family: ui-monospace, 'SF Mono', Menlo, monospace;
-      font-size: 0.72rem; color: #444;
+    .demo-nav .badge {
+      font-size: 0.62rem; font-weight: 600; letter-spacing: 0.04em;
+      text-transform: uppercase;
+      padding: 3px 10px; border-radius: 10px;
+      background: #111827; color: #475569;
+      border: 1px solid rgba(148,163,184,0.08);
     }
+    .demo-nav .badge.ready   { background: rgba(0,212,170,0.08); color: #00d4aa; border-color: rgba(0,212,170,0.2); }
+    .demo-nav .badge.loading { background: rgba(245,158,11,0.08); color: #f59e0b; border-color: rgba(245,158,11,0.2); }
+    .demo-nav .badge.error   { background: rgba(239,68,68,0.08);  color: #ef4444; border-color: rgba(239,68,68,0.2); }
 
     /* ---- Chat area ---- */
     .chat-wrap {
       flex: 1; overflow-y: auto;
-      padding: 1rem 1.25rem;
+      padding: 16px 20px;
       display: flex; flex-direction: column;
     }
     .chat {
       max-width: 720px; width: 100%; margin: 0 auto;
-      display: flex; flex-direction: column; gap: 0.75rem;
+      display: flex; flex-direction: column; gap: 10px;
       flex: 1;
     }
 
-    /* ---- Start screen ---- */
+    /* ---- Start screen (gpubench-framed hero) ---- */
     .start-screen {
       display: flex; flex-direction: column; align-items: center;
-      justify-content: center; flex: 1; gap: 1.25rem; text-align: center;
+      justify-content: center; flex: 1; gap: 18px; text-align: center;
+      padding: 20px;
     }
-    .start-screen .title { font-size: 1.1rem; font-weight: 600; color: #ccc; }
-    .start-screen .desc { font-size: 0.85rem; color: #555; max-width: 380px; line-height: 1.6; }
+    .start-screen .hero {
+      max-width: 560px;
+    }
+    .start-screen .hero h1 {
+      font-size: 1.6rem; font-weight: 700; letter-spacing: -0.02em;
+      color: #f1f5f9; line-height: 1.15;
+    }
+    .start-screen .hero .hl { color: #00d4aa; }
+    .start-screen .hero p {
+      font-size: 0.86rem; color: #94a3b8; line-height: 1.55;
+      margin-top: 10px;
+    }
+    .start-screen .hero a { color: #00d4aa; text-decoration: none; }
+    .start-screen .hero a:hover { text-decoration: underline; }
+
+    .pills {
+      display: flex; flex-wrap: wrap; gap: 6px;
+      justify-content: center; margin-top: 2px;
+    }
+    .pill {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.62rem; letter-spacing: 0.04em; text-transform: uppercase;
+      padding: 3px 10px; border-radius: 12px;
+      background: #111827; color: #94a3b8;
+      border: 1px solid rgba(148,163,184,0.08);
+    }
+    .pill strong { color: #00d4aa; font-weight: 600; }
+
     .start-btn {
-      background: #10b981; color: #000; font-weight: 600; font-size: 0.95rem;
-      padding: 0.7rem 2rem; border: none; border-radius: 8px; cursor: pointer;
-      transition: background 0.15s, transform 0.1s;
+      font-family: 'Inter', sans-serif;
+      background: #00d4aa; color: #0a0e1a;
+      font-weight: 600; font-size: 0.82rem;
+      padding: 10px 26px; border: none; border-radius: 6px;
+      cursor: pointer; transition: background 0.15s, transform 0.1s;
     }
-    .start-btn:hover { background: #34d399; transform: translateY(-1px); }
-    .start-btn:active { transform: translateY(0); }
-    .start-btn:disabled { background: #1a1a1a; color: #444; cursor: default; transform: none; }
-    .start-hint { font-size: 0.68rem; color: #333; }
+    .start-btn:hover:not(:disabled) { background: #00f0c0; }
+    .start-btn:active { transform: translateY(1px); }
+    .start-btn:disabled { background: #1e293b; color: #475569; cursor: default; }
+    .start-hint { font-size: 0.66rem; color: #475569; }
 
     /* ---- Progress ---- */
     .progress-wrap {
       display: none; flex-direction: column; align-items: center;
-      justify-content: center; flex: 1; gap: 1rem; text-align: center;
-      max-width: 420px; margin: 0 auto; width: 100%;
+      justify-content: center; flex: 1; gap: 12px; text-align: center;
+      max-width: 460px; margin: 0 auto; width: 100%;
     }
     .progress-wrap.active { display: flex; }
-    .progress-status { font-size: 0.85rem; color: #888; }
+    .progress-status { font-size: 0.82rem; color: #94a3b8; }
     .progress-bar-outer {
-      width: 100%; height: 4px; background: #1a1a1a; border-radius: 2px; overflow: hidden;
+      width: 100%; height: 3px; background: #111827; border-radius: 2px; overflow: hidden;
+      border: 1px solid rgba(148,163,184,0.06);
     }
     .progress-bar-inner {
-      height: 100%; width: 0%; background: #10b981; border-radius: 2px;
+      height: 100%; width: 0%; background: #00d4aa; border-radius: 2px;
       transition: width 0.15s ease-out;
+      box-shadow: 0 0 10px rgba(0,212,170,0.4);
     }
     .progress-detail {
-      font-family: ui-monospace, 'SF Mono', Menlo, monospace;
-      font-size: 0.7rem; color: #333;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.68rem; color: #475569;
     }
     .progress-log {
-      width: 100%; max-height: 120px; overflow-y: auto;
-      font-family: ui-monospace, 'SF Mono', Menlo, monospace;
-      font-size: 0.65rem; color: #2a2a2a; text-align: left;
-      padding: 0.5rem; background: #0d0d0d; border-radius: 6px;
-      border: 1px solid #151515; white-space: pre-wrap;
+      width: 100%; max-height: 130px; overflow-y: auto;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.62rem; color: #475569; text-align: left;
+      padding: 8px 10px; background: #0c1221; border-radius: 6px;
+      border: 1px solid rgba(148,163,184,0.06); white-space: pre-wrap;
     }
 
     /* ---- Messages ---- */
     .msg {
-      max-width: 85%; padding: 0.7rem 1rem; border-radius: 12px;
-      font-size: 0.9rem; line-height: 1.6; white-space: pre-wrap; word-wrap: break-word;
+      max-width: 85%; padding: 10px 14px; border-radius: 10px;
+      font-size: 0.86rem; line-height: 1.55;
+      white-space: pre-wrap; word-wrap: break-word;
     }
     .msg.user {
-      background: #1a2a3e; align-self: flex-end;
-      border-bottom-right-radius: 4px; color: #ddd;
+      background: rgba(0,212,170,0.08);
+      border: 1px solid rgba(0,212,170,0.15);
+      align-self: flex-end;
+      border-bottom-right-radius: 3px;
+      color: #e2e8f0;
     }
     .msg.ai {
-      background: #151515; align-self: flex-start;
-      border-bottom-left-radius: 4px; color: #bbb;
+      background: #111827;
+      border: 1px solid rgba(148,163,184,0.06);
+      align-self: flex-start;
+      border-bottom-left-radius: 3px;
+      color: #c8d6e5;
     }
-    .msg.ai.generating { border-left: 2px solid #10b981; }
+    .msg.ai.generating { border-left: 2px solid #00d4aa; }
 
     /* ---- Input ---- */
     .input-wrap {
-      border-top: 1px solid #1a1a1a; padding: 0.75rem 1.25rem;
-      background: #0d0d0d; flex-shrink: 0;
+      border-top: 1px solid rgba(148,163,184,0.06);
+      padding: 10px 20px; background: #0c1221;
+      flex-shrink: 0;
     }
     .input-inner {
       max-width: 720px; margin: 0 auto;
-      display: flex; gap: 0.5rem;
+      display: flex; gap: 8px;
     }
     .input-inner input {
-      flex: 1; background: #141414; border: 1px solid #222;
-      color: #ddd; padding: 0.65rem 0.9rem; border-radius: 8px;
-      font-size: 0.9rem; outline: none; transition: border-color 0.15s;
+      flex: 1;
+      background: #111827; border: 1px solid rgba(148,163,184,0.08);
+      color: #e2e8f0; padding: 9px 14px; border-radius: 6px;
+      font-family: 'Inter', sans-serif; font-size: 0.86rem;
+      outline: none; transition: border-color 0.15s;
     }
-    .input-inner input:focus { border-color: #10b98144; }
+    .input-inner input:focus { border-color: rgba(0,212,170,0.4); }
     .input-inner input:disabled { opacity: 0.4; }
+    .input-inner input::placeholder { color: #475569; }
     .input-inner button {
-      background: #10b981; color: #000; font-weight: 600;
-      border: none; padding: 0.65rem 1.25rem; border-radius: 8px;
-      font-size: 0.85rem; cursor: pointer; transition: background 0.15s;
+      font-family: 'Inter', sans-serif;
+      background: #00d4aa; color: #0a0e1a;
+      font-weight: 600; font-size: 0.76rem;
+      border: none; padding: 9px 18px; border-radius: 6px;
+      cursor: pointer; transition: background 0.15s;
     }
-    .input-inner button:hover { background: #34d399; }
+    .input-inner button:hover:not(:disabled) { background: #00f0c0; }
     .input-inner button:disabled {
-      background: #1a1a1a; color: #333; cursor: default;
+      background: #1e293b; color: #475569; cursor: default;
     }
 
-    /* ---- Footer ---- */
+    /* ---- Footer (matches gpubench nav links) ---- */
     footer {
-      text-align: center; padding: 0.5rem;
-      font-size: 0.65rem; color: #222; flex-shrink: 0;
+      text-align: center; padding: 10px 20px 14px;
+      font-size: 0.68rem; color: #475569; flex-shrink: 0;
     }
-    footer a { color: #333; text-decoration: none; }
+    footer a { color: #64748b; text-decoration: none; transition: color 0.15s; }
+    footer a:hover { color: #94a3b8; }
+    footer .sep { color: #334155; margin: 0 8px; }
 
-    @media (max-width: 500px) {
-      .topbar { padding: 0.6rem 0.75rem; }
-      .chat-wrap { padding: 0.75rem; }
-      .input-wrap { padding: 0.6rem 0.75rem; }
+    @media (max-width: 560px) {
+      .demo-nav { padding: 10px 14px; }
+      .demo-nav .nav-right { gap: 8px; }
+      .demo-nav .stats { display: none; }
+      .chat-wrap { padding: 12px; }
+      .input-wrap { padding: 8px 12px; }
+      .start-screen .hero h1 { font-size: 1.3rem; }
     }
   </style>
   <script type="module" crossorigin src="/demos/zerotvm/assets/zero-tvm-gNfy8F9z.js"></script>
@@ -165,22 +213,36 @@
   <link rel="modulepreload" crossorigin href="/demos/zerotvm/assets/loading-ui-DdIIRBQA.js">
 </head>
 <body>
-  <div class="topbar">
-    <a href="/">&larr;</a>
-    <h1>Zero TVM</h1>
-    <span id="badge" class="badge">Waiting</span>
-    <span id="stats" class="stats"></span>
-  </div>
+  <nav class="demo-nav">
+    <a href="/" class="logo">
+      <svg width="18" height="18" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="14" stroke="currentColor" stroke-width="2.5" stroke-dasharray="60 28" stroke-linecap="round"/><circle cx="16" cy="16" r="2.5" fill="currentColor"/></svg>
+      WebGPU Bench
+    </a>
+    <div class="nav-right">
+      <span id="stats" class="stats"></span>
+      <span id="badge" class="badge">Waiting</span>
+      <a href="/swarm" class="back">All Demos &rarr;</a>
+    </div>
+  </nav>
 
   <div class="chat-wrap">
     <div id="chat" class="chat">
       <div id="start-screen" class="start-screen">
-        <div class="title">Phi-3-mini (3.6B)</div>
-        <div class="desc">
-          Runs entirely on your GPU with 10 hand-written WGSL shaders.
-          No TVM, no compiler, no server.
+        <div class="hero">
+          <h1>Chat with a <span class="hl">3.6 B LLM</span> on your own GPU</h1>
+          <p>
+            Phi-3-mini running on <span class="hl">10 hand-written WGSL shaders</span>.
+            No TVM, no compiler, no server. Every generation reports decode tok/s
+            to the <a href="/results">results leaderboard</a> so you can see how your device compares.
+          </p>
         </div>
-        <button id="start-btn" class="start-btn">Download & Start</button>
+        <div class="pills">
+          <span class="pill"><strong>3.6 B</strong> params</span>
+          <span class="pill"><strong>10</strong> shaders</span>
+          <span class="pill"><strong>~2 GB</strong> model</span>
+          <span class="pill">pure WebGPU</span>
+        </div>
+        <button id="start-btn" class="start-btn">Download &amp; Start</button>
         <div class="start-hint">~2 GB model download, cached after first load</div>
       </div>
 
@@ -203,7 +265,10 @@
   </div>
 
   <footer>
-    <a href="/">zero-tvm</a> &middot; 10 WGSL shaders &middot; <a href="https://github.com/abgnydn/zero-tvm">GitHub</a>
+    <a href="/results">Leaderboard</a><span class="sep">·</span>
+    <a href="/why">Why this matters</a><span class="sep">·</span>
+    <a href="https://github.com/abgnydn/zero-tvm">Zero-TVM on GitHub</a><span class="sep">·</span>
+    <a href="https://zerotvm.com">zerotvm.com</a>
   </footer>
 
 </body>

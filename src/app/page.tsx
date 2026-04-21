@@ -9,6 +9,7 @@ import type { GpuInfo } from "@/lib/gpu-detect";
 import type { BenchmarkResult } from "@/lib/benchmark-runner";
 import { LINKS } from "@/lib/constants";
 import { PaperCard } from "@/components/paper-card";
+import { TabSwitcher } from "@/components/tab-switcher";
 
 type BenchStatus = "idle" | "warmup" | "running" | "done";
 
@@ -273,23 +274,7 @@ export default function HomePage() {
         </div>
 
         {/* Tab Switcher */}
-        <div className="inline-flex rounded-lg bg-bench-surface border border-bench-border p-1 mb-8">
-          <span className="px-4 py-2 rounded-md text-sm font-medium bg-bench-accent/10 text-bench-accent">
-            GPU Compute
-          </span>
-          <a href="/transformer" className="px-4 py-2 rounded-md text-sm font-medium text-bench-muted hover:text-bench-text transition">
-            Transformer Fusion
-          </a>
-          <a href="/swarm" className="px-4 py-2 rounded-md text-sm font-medium text-bench-muted hover:text-bench-text transition">
-            Distributed P2P
-          </a>
-          <a href="/demos/zerotvm-chat.html" className="px-4 py-2 rounded-md text-sm font-medium text-bench-muted hover:text-bench-text transition">
-            Zero-TVM
-          </a>
-          <a href="/results" className="px-4 py-2 rounded-md text-sm font-medium text-bench-muted hover:text-bench-text transition">
-            All Results
-          </a>
-        </div>
+        <TabSwitcher />
         <h1 className="text-4xl md:text-5xl font-bold tracking-tight leading-[1.1] mb-4">
           How fast is your GPU
           <br />
