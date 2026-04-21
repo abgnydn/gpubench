@@ -14,6 +14,15 @@
   <!-- Shared demo typography/nav palette — keeps zero-tvm visually coherent
        with the Flappy / Rastrigin / PETase / Neoantigen demos. -->
   <link rel="stylesheet" href="/demos/demo-shared.css">
+  <!-- Embed mode: when loaded inside the Next.js /zerotvm page's iframe,
+       ?embed=1 strips this file's own demo-nav and footer (the outer
+       gpubench page already renders its own nav). Runs before paint so
+       there's no flash of standalone-layout chrome. -->
+  <script>
+    if (new URLSearchParams(location.search).get('embed') === '1') {
+      document.documentElement.classList.add('embed');
+    }
+  </script>
   <!-- Gpubench device telemetry. Defines window.reportDevice, which the
        bundled chat code calls at the end of every generation. Load BEFORE
        the module script so the global is defined when generation finishes. -->
@@ -25,6 +34,29 @@
     body {
       display: flex; flex-direction: column;
       min-height: 100vh;
+    }
+
+    /* Embed mode: the outer /zerotvm Next.js page already owns the branding
+       (logo, tab switcher) and footer. Drop those copies, but keep the
+       badge + tok/s stats visible — the user needs that status feedback
+       during load and generation. Nav becomes a slim right-aligned
+       status strip. min-height swaps from 100vh → 100% so the layout
+       fills the iframe instead of overflowing it. */
+    html.embed body { min-height: 100%; }
+    html.embed footer { display: none; }
+    html.embed .demo-nav .logo,
+    html.embed .demo-nav .back { display: none; }
+    html.embed .demo-nav {
+      justify-content: flex-end;
+      padding: 8px 16px;
+      /* demo-shared.css sets max-width:940px + margin:0 auto, which in
+         embed mode (body is flex column) makes the nav shrink-to-fit
+         and center. Override so it spans the full iframe width with the
+         badge pinned to the right edge. */
+      max-width: none;
+      margin: 0;
+      width: 100%;
+      border-bottom: 1px solid rgba(148,163,184,0.04);
     }
 
     /* ---- Nav (extends .demo-nav from demo-shared.css) ---- */

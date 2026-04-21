@@ -123,6 +123,15 @@ export default function ResultsPage() {
   const [demoTotal, setDemoTotal] = useState(0);
   const [demoPage, setDemoPage] = useState(1);
   const [demoPages, setDemoPages] = useState(1);
+  // Breakdown by workload (reports + unique devices). Fetched from the
+  // aggregate /api/device endpoint (no ?all) so it reflects the whole
+  // dataset, not just the visible page. Used to surface per-demo counts
+  // in the stat cards above the table — currently split out for
+  // Zero-TVM because it's a meaningfully different workload (LLM decode
+  // tok/s vs the evolutionary gen/s the P2P demos report).
+  const [workloadStats, setWorkloadStats] = useState<
+    Array<{ workload: string; reports: number; devices: number }>
+  >([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [sortField, setSortField] = useState("created_at");
@@ -164,12 +173,25 @@ export default function ResultsPage() {
     } catch { /* */ }
   }, [sortField, sortDir]);
 
+  // One-shot aggregate over all workloads — independent of pagination.
+  // Used only to populate the per-workload stat cards at the top.
+  const fetchWorkloadStats = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/device`);
+      const json = await res.json();
+      setWorkloadStats(json.workloads ?? []);
+    } catch { /* */ }
+  }, []);
+
   useEffect(() => {
     setLoading(true);
-    Promise.all([fetchCompute(1), fetchTransformer(1), fetchDemos(1)]).finally(() =>
-      setLoading(false),
-    );
-  }, [fetchCompute, fetchTransformer, fetchDemos]);
+    Promise.all([
+      fetchCompute(1),
+      fetchTransformer(1),
+      fetchDemos(1),
+      fetchWorkloadStats(),
+    ]).finally(() => setLoading(false));
+  }, [fetchCompute, fetchTransformer, fetchDemos, fetchWorkloadStats]);
 
   const handleSort = (field: string) => {
     const newDir = sortField === field ? (sortDir === "asc" ? "desc" : "asc") : "desc";
@@ -311,26 +333,39 @@ export default function ResultsPage() {
         </header>
 
         {/* Aggregate stats */}
-        {!loading && (
-          <div className="grid grid-cols-4 gap-3 mb-6">
-            <div className="card text-center py-4">
-              <div className="text-2xl font-extrabold text-bench-accent">{allTotal.toLocaleString()}</div>
-              <div className="text-[10px] text-bench-muted mt-1">Total runs</div>
+        {!loading && (() => {
+          // Split demo runs into Zero-TVM vs the rest (P2P evolution demos).
+          // Server-side aggregate so it's accurate over the whole table,
+          // not just the visible page.
+          const zerotvmRuns = workloadStats
+            .filter((w) => w.workload.toLowerCase().includes("zero-tvm"))
+            .reduce((acc, w) => acc + (Number(w.reports) || 0), 0);
+          const p2pRuns = Math.max(0, demoTotal - zerotvmRuns);
+          return (
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
+              <div className="card text-center py-4">
+                <div className="text-2xl font-extrabold text-bench-accent">{allTotal.toLocaleString()}</div>
+                <div className="text-[10px] text-bench-muted mt-1">Total runs</div>
+              </div>
+              <div className="card text-center py-4">
+                <div className="text-2xl font-extrabold text-bench-accent">{computeTotal.toLocaleString()}</div>
+                <div className="text-[10px] text-bench-muted mt-1">GPU Compute</div>
+              </div>
+              <div className="card text-center py-4">
+                <div className="text-2xl font-extrabold text-bench-accent">{transformerTotal.toLocaleString()}</div>
+                <div className="text-[10px] text-bench-muted mt-1">Transformer Fusion</div>
+              </div>
+              <div className="card text-center py-4">
+                <div className="text-2xl font-extrabold text-bench-accent">{p2pRuns.toLocaleString()}</div>
+                <div className="text-[10px] text-bench-muted mt-1">P2P Demos</div>
+              </div>
+              <div className="card text-center py-4">
+                <div className="text-2xl font-extrabold text-bench-accent">{zerotvmRuns.toLocaleString()}</div>
+                <div className="text-[10px] text-bench-muted mt-1">Zero-TVM</div>
+              </div>
             </div>
-            <div className="card text-center py-4">
-              <div className="text-2xl font-extrabold text-bench-accent">{computeTotal.toLocaleString()}</div>
-              <div className="text-[10px] text-bench-muted mt-1">GPU Compute</div>
-            </div>
-            <div className="card text-center py-4">
-              <div className="text-2xl font-extrabold text-bench-accent">{transformerTotal.toLocaleString()}</div>
-              <div className="text-[10px] text-bench-muted mt-1">Transformer Fusion</div>
-            </div>
-            <div className="card text-center py-4">
-              <div className="text-2xl font-extrabold text-bench-accent">{demoTotal.toLocaleString()}</div>
-              <div className="text-[10px] text-bench-muted mt-1">P2P Demos</div>
-            </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* Controls */}
         <div className="flex flex-wrap items-center gap-3 mb-4">
@@ -355,10 +390,12 @@ export default function ResultsPage() {
             <button
               onClick={() => setTab("demos")}
               className={`px-3 py-1.5 rounded-md text-xs font-medium transition ${
-                tab === "demos" ? "bg-bench-accent/10 text-bench-accent" : "text-bench-muted hover:text-bench-text"
+                tab === "demos"
+                  ? "bg-bench-accent/10 text-bench-accent"
+                  : "text-bench-muted hover:text-bench-text"
               }`}
             >
-              P2P Demos
+              Demos
             </button>
           </div>
 
@@ -536,8 +573,8 @@ export default function ResultsPage() {
                     <SortHeader label="Device" field="device_name" currentSort={sortField} currentDir={sortDir} onSort={handleSort} />
                     <SortHeader label="Workload" field="workload" currentSort={sortField} currentDir={sortDir} onSort={handleSort} />
                     <SortHeader label="Fitness" field="fitness" currentSort={sortField} currentDir={sortDir} onSort={handleSort} />
-                    <SortHeader label="Gen" field="gen" currentSort={sortField} currentDir={sortDir} onSort={handleSort} />
-                    <SortHeader label="Gen/s" field="speed" currentSort={sortField} currentDir={sortDir} onSort={handleSort} />
+                    <SortHeader label="Gen / Tok" field="gen" currentSort={sortField} currentDir={sortDir} onSort={handleSort} />
+                    <SortHeader label="Rate /s" field="speed" currentSort={sortField} currentDir={sortDir} onSort={handleSort} />
                     <th className="px-2 py-2 text-left text-[10px] uppercase tracking-wider text-bench-muted">Browser</th>
                     <th className="px-2 py-2 text-left text-[10px] uppercase tracking-wider text-bench-muted">OS</th>
                     <SortHeader label="When" field="created_at" currentSort={sortField} currentDir={sortDir} onSort={handleSort} />
@@ -554,7 +591,16 @@ export default function ResultsPage() {
                         {r.device_name}
                         {r.is_mobile && <span className="ml-1 text-[9px] px-1 py-0.5 rounded bg-bench-accent/10 text-bench-accent">mobile</span>}
                       </td>
-                      <td className="px-2 py-1.5 text-bench-muted">{r.workload}</td>
+                      <td className="px-2 py-1.5 text-bench-muted">
+                        {r.workload?.toLowerCase().includes("zero-tvm") ? (
+                          <span className="inline-flex items-center gap-1">
+                            <span className="text-[9px] px-1 py-0.5 rounded bg-bench-green/10 text-bench-green font-semibold uppercase tracking-wider">LLM</span>
+                            {r.workload}
+                          </span>
+                        ) : (
+                          r.workload
+                        )}
+                      </td>
                       <td className="px-2 py-1.5 tabular-nums text-bench-accent font-bold">{fmtNum(r.fitness)}</td>
                       <td className="px-2 py-1.5 tabular-nums text-bench-muted">{r.gen?.toLocaleString() ?? "—"}</td>
                       <td className="px-2 py-1.5 tabular-nums text-bench-muted">{fmtNum(r.speed)}</td>
