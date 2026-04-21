@@ -283,6 +283,9 @@ export default function HomePage() {
           <a href="/swarm" className="px-4 py-2 rounded-md text-sm font-medium text-bench-muted hover:text-bench-text transition">
             Distributed P2P
           </a>
+          <a href="/demos/zerotvm-chat.html" className="px-4 py-2 rounded-md text-sm font-medium text-bench-muted hover:text-bench-text transition">
+            Zero-TVM
+          </a>
           <a href="/results" className="px-4 py-2 rounded-md text-sm font-medium text-bench-muted hover:text-bench-text transition">
             All Results
           </a>

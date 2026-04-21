@@ -57,21 +57,6 @@ const DEMOS = [
     href: "/demos/neoantigen-p2p.html",
     featured: false,
   },
-  {
-    id: "zerotvm-chat",
-    icon: "🧠",
-    name: "Zero-TVM Phi-3 Chat",
-    description: "Chat with Phi-3-mini (3.6B) running entirely on your GPU. 10 hand-written WGSL shaders, no TVM runtime, no compiler — pure WebGPU inference. Reports decode tok/s per device.",
-    tags: ["LLM", "WebGPU", "WGSL Shaders"],
-    metrics: [
-      { label: "Params", value: "3.6B" },
-      { label: "Shaders", value: "10" },
-      { label: "Model size", value: "~2 GB" },
-    ],
-    href: "/demos/zerotvm-chat.html",
-    featured: false,
-    cta: "Single device · Phi-3 3.6B",
-  },
 ];
 
 const PAPER_RESULTS = [
@@ -113,6 +98,9 @@ export default function SwarmPage() {
           <span className="px-4 py-2 rounded-md text-sm font-medium bg-bench-accent/10 text-bench-accent">
             Distributed P2P
           </span>
+          <a href="/demos/zerotvm-chat.html" className="px-4 py-2 rounded-md text-sm font-medium text-bench-muted hover:text-bench-text transition">
+            Zero-TVM
+          </a>
         </div>
 
         <h1 className="text-3xl md:text-4xl font-bold tracking-tight leading-[1.1] mb-3">
@@ -210,7 +198,7 @@ export default function SwarmPage() {
                     Launch Demo
                   </a>
                   <span className="text-xs font-medium px-3 py-1.5 rounded-md bg-bench-border/30 text-bench-muted">
-                    {("cta" in demo && demo.cta) || "Open in 2+ tabs for P2P"}
+                    Open in 2+ tabs for P2P
                   </span>
                 </div>
               </div>

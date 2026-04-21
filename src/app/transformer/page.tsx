@@ -154,6 +154,9 @@ export default function TransformerPage() {
           <a href="/swarm" className="px-4 py-2 rounded-md text-sm font-medium text-bench-muted hover:text-bench-text transition">
             Distributed P2P
           </a>
+          <a href="/demos/zerotvm-chat.html" className="px-4 py-2 rounded-md text-sm font-medium text-bench-muted hover:text-bench-text transition">
+            Zero-TVM
+          </a>
         </div>
 
         <h1 className="text-3xl md:text-4xl font-bold tracking-tight leading-[1.1] mb-3">
