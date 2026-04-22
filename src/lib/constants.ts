@@ -20,11 +20,22 @@ export const LINKS = {
   research: "https://kernelfusion.dev",
   site: "https://gpubench.dev",
 
-  // Zero-TVM — separate project, surfaced on /zerotvm
+  // Zero-TVM — separate project, surfaced on /zerotvm. URL set
+  // mirrors the top-level pages on zerotvm.com (as of 2026-04):
+  // home, chat, docs, architecture, plus the comparison /
+  // introspection tools (dispatch viz, WebLLM bench, compiler
+  // chat, TVM dump, shader source, validator).
   zerotvmSite: "https://zerotvm.com",
   zerotvmRepo: "https://github.com/abgnydn/zero-tvm",
+  zerotvmChat: "https://zerotvm.com/zero-tvm.html",
+  zerotvmDocs: "https://zerotvm.com/docs.html",
+  zerotvmArchitecture: "https://zerotvm.com/architecture.html",
   zerotvmDispatchViz: "https://zerotvm.com/demo.html",
+  zerotvmWebllmBench: "https://zerotvm.com/webllm-bench.html",
+  zerotvmCompilerChat: "https://zerotvm.com/compiler-chat.html",
   zerotvmShaderDump: "https://zerotvm.com/dump.html",
+  zerotvmShaderSource: "https://zerotvm.com/shaders.html",
+  zerotvmValidate: "https://zerotvm.com/validate.html",
 
   // WebGPU-DNA — radiobiology Monte Carlo, same fusion pattern
   webgpuDnaSite: "https://webgpu-dna.vercel.app",

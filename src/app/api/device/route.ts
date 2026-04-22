@@ -105,7 +105,22 @@ export async function GET(request: Request) {
       const sortCol = ALLOWED_SORT.has(sortParam) ? sortParam : "created_at";
       const sortDir = searchParams.get("dir") === "asc" ? "ASC" : "DESC";
 
-      const totalResult = await sql`SELECT COUNT(*) as count FROM device_sessions`;
+      // Optional workload filter. Zero-TVM (LLM decode) and the P2P
+      // evolution demos live in the same device_sessions table but are
+      // meaningfully different workloads — the UI splits them across two
+      // tabs. Keep the set closed (only known values) so callers can't
+      // sneak arbitrary LIKE patterns through.
+      const filterParam = searchParams.get("filter");
+      let whereSQL = "";
+      if (filterParam === "zerotvm") {
+        whereSQL = "WHERE workload ILIKE '%zero-tvm%'";
+      } else if (filterParam === "p2p") {
+        whereSQL = "WHERE workload NOT ILIKE '%zero-tvm%'";
+      }
+
+      const totalResult = await sql.query(
+        `SELECT COUNT(*) as count FROM device_sessions ${whereSQL}`,
+      );
       const total = Number(totalResult.rows[0]?.["count"] ?? 0);
 
       const rows = await sql.query(
@@ -113,6 +128,7 @@ export async function GET(request: Request) {
                 fitness, gen, speed,
                 browser, os, is_mobile, created_at
          FROM device_sessions
+         ${whereSQL}
          ORDER BY ${sortCol} ${sortDir} NULLS LAST
          LIMIT $1 OFFSET $2`,
         [limit, offset],

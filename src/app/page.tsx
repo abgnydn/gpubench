@@ -407,7 +407,7 @@ export default function HomePage() {
               </span>
               <h3 className="font-semibold text-bench-text text-sm mb-1">zerotvm.com</h3>
               <p className="text-xs text-bench-muted leading-relaxed mb-2">
-                Phi-3 (3.6B) in the browser on 10 hand-written WGSL shaders, replacing the 85 auto-generated ones TVM/WebLLM needs. 792 lines of GPU code.
+                Phi-3 Mini (3.8B) in the browser via 10 kernel roles across 27 WGSL files — ~2k lines of TypeScript, no compiler, no WASM. ~40 tok/s on M2 Pro.
               </p>
               <span className="text-xs font-medium text-bench-accent">Run it live &rarr;</span>
             </a>
