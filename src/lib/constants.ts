@@ -19,6 +19,16 @@ export const LINKS = {
   repo: "https://github.com/abgnydn/gpubench",
   research: "https://kernelfusion.dev",
   site: "https://gpubench.dev",
+
+  // Zero-TVM — separate project, surfaced on /zerotvm
+  zerotvmSite: "https://zerotvm.com",
+  zerotvmRepo: "https://github.com/abgnydn/zero-tvm",
+  zerotvmDispatchViz: "https://zerotvm.com/demo.html",
+  zerotvmShaderDump: "https://zerotvm.com/dump.html",
+
+  // WebGPU-DNA — radiobiology Monte Carlo, same fusion pattern
+  webgpuDnaSite: "https://webgpu-dna.vercel.app",
+  webgpuDnaRepo: "https://github.com/abgnydn/webgpu-dna",
 } as const;
 
 export const STATS = {

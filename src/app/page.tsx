@@ -389,6 +389,40 @@ export default function HomePage() {
             </div>
           </div>
         </div>
+
+        {/* Companion projects */}
+        <div className="pt-4">
+          <div className="flex items-center gap-4 mb-4">
+            <div className="flex-1 h-px bg-bench-border" />
+            <span className="text-xs text-bench-muted font-medium uppercase tracking-widest">Companion projects</span>
+            <div className="flex-1 h-px bg-bench-border" />
+          </div>
+          <p className="text-xs text-bench-muted leading-relaxed mb-4 text-center max-w-md mx-auto">
+            These benchmarks measure the raw fusion pattern. Two projects apply it end-to-end.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <a href={LINKS.zerotvmSite} target="_blank" rel="noopener" className="card block transition hover:border-bench-accent/30">
+              <span className="text-[10px] font-medium uppercase tracking-wider px-2 py-0.5 rounded-full bg-bench-accent/10 text-bench-accent mb-2 inline-block">
+                LLM inference
+              </span>
+              <h3 className="font-semibold text-bench-text text-sm mb-1">zerotvm.com</h3>
+              <p className="text-xs text-bench-muted leading-relaxed mb-2">
+                Phi-3 (3.6B) in the browser on 10 hand-written WGSL shaders, replacing the 85 auto-generated ones TVM/WebLLM needs. 792 lines of GPU code.
+              </p>
+              <span className="text-xs font-medium text-bench-accent">Run it live &rarr;</span>
+            </a>
+            <a href={LINKS.webgpuDnaSite} target="_blank" rel="noopener" className="card block transition hover:border-bench-accent/30">
+              <span className="text-[10px] font-medium uppercase tracking-wider px-2 py-0.5 rounded-full bg-bench-accent/10 text-bench-accent mb-2 inline-block">
+                Radiobiology
+              </span>
+              <h3 className="font-semibold text-bench-text text-sm mb-1">webgpu-dna.vercel.app</h3>
+              <p className="text-xs text-bench-muted leading-relaxed mb-2">
+                Geant4-DNA electron track-structure Monte Carlo in the browser. One fused dispatch, one thread per primary, full history inline.
+              </p>
+              <span className="text-xs font-medium text-bench-accent">See the simulation &rarr;</span>
+            </a>
+          </div>
+        </div>
       </main>
 
       {/* Footer */}
@@ -402,10 +436,12 @@ export default function HomePage() {
               </svg>
               <span className="font-semibold text-bench-text">WebGPU Bench</span>
             </div>
-            <div className="flex items-center gap-5 text-sm text-bench-muted">
+            <div className="flex items-center gap-5 text-sm text-bench-muted flex-wrap justify-center">
               <a href="/results" className="hover:text-bench-text transition">All Results</a>
               <a href="/why" className="hover:text-bench-text transition">Why this matters</a>
-              <a href={LINKS.research} className="hover:text-bench-text transition">Research</a>
+              <a href={LINKS.research} className="hover:text-bench-text transition">kernelfusion.dev</a>
+              <a href={LINKS.zerotvmSite} target="_blank" rel="noopener" className="hover:text-bench-text transition">zerotvm.com</a>
+              <a href={LINKS.webgpuDnaSite} target="_blank" rel="noopener" className="hover:text-bench-text transition">webgpu-dna</a>
               <a href={LINKS.repo} className="hover:text-bench-text transition">GitHub</a>
               <a href="/privacy" className="hover:text-bench-text transition">Privacy</a>
               <span>MIT License</span>
