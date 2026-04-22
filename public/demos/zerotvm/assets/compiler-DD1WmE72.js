@@ -1,12 +1,12 @@
-import{b as N,i as R,f as U,c as F,a as $,k as X,r as j,d as Q,e as V}from"./argmax-B2Isa9Fr.js";import{i as H}from"./int4_matmul_f32-BY4OHOh5.js";import{q as Y}from"./qkv_fused-_Y_hop8R.js";const G="https://huggingface.co/mlc-ai/Phi-3-mini-4k-instruct-q4f16_1-MLC/resolve/main/";async function Z(){var n;try{return typeof navigator>"u"||!((n=navigator.storage)!=null&&n.getDirectory)?null:await(await navigator.storage.getDirectory()).getDirectoryHandle("zero-tvm-weights",{create:!0})}catch{return null}}function T(n){return n.replace(/[^A-Za-z0-9._-]/g,"_")}async function J(n,a){if(!n)return null;try{return await(await(await n.getFileHandle(T(a))).getFile()).arrayBuffer()}catch{return null}}async function q(n,a,e){if(n)try{const o=await(await n.getFileHandle(T(a),{create:!0})).createWritable();await o.write(e),await o.close()}catch{}}async function L(n,a,e,t){const o=n.split("/").at(-1),d=await J(e,a);if(d)return t==null||t(`[opfs] ${o}`),d;try{const x=await caches.keys();for(const S of x){const k=await(await caches.open(S)).match(n);if(k){t==null||t(`[cache] ${o}`);const E=await k.arrayBuffer();return q(e,a,E),E}}}catch{}t==null||t(`[fetch] ${o}`);const h=await fetch(n);if(!h.ok)throw new Error(`HTTP ${h.status} fetching ${n}`);const m=await h.arrayBuffer();return q(e,a,m),m}function nn(n){const a=[];for(const e of n.records)if("records"in e&&Array.isArray(e.records))for(const t of e.records)a.push({...t,dataPath:t.dataPath??e.dataPath});else a.push(e);return a}const en=GPUBufferUsage.STORAGE|GPUBufferUsage.COPY_SRC|GPUBufferUsage.COPY_DST;function tn(n,a,e){const t=n.createBuffer({size:Math.max(e.nbytes,4),usage:en,label:e.name});return n.queue.writeBuffer(t,0,new Uint8Array(a,e.byteOffset,e.nbytes)),t}async function Kn(n,a){const e=G;a==null||a("Loading ndarray-cache.json...");const t=await Z(),o=await L(e+"ndarray-cache.json","ndarray-cache.json",t,a),d=JSON.parse(new TextDecoder().decode(o)),h=nn(d);a==null||a(`Manifest: ${h.length} parameters`);const m=new Map;for(const i of h){const _=m.get(i.dataPath);_?_.push(i):m.set(i.dataPath,[i])}const x=new Map;let S=0;const K=m.size,k=h.reduce((i,_)=>i+_.nbytes,0);let E=0;await Promise.all([...m.entries()].map(async([i,_])=>{const c=await L(e+i,i,t,a);for(const P of _)x.set(P.name,tn(n,c,P));S++,E+=c.byteLength;const C=(E/1e6).toFixed(0),W=(k/1e6).toFixed(0);a==null||a(`[${S}/${K}] ${i} · ${C}/${W} MB`)}));function b(...i){for(const _ of i){const c=x.get(_);if(c)return c}throw new Error(`Weight not found. Tried: ${i.join(", ")}
-Available: ${[...x.keys()].slice(0,20).join(", ")}`)}const D=b("transformer.embd.q_weight","embed_tokens.q_weight","model.embed_tokens.q_weight"),y=b("transformer.embd.q_scale","embed_tokens.q_scale","model.embed_tokens.q_scale"),u=b("transformer.h.0.ln.weight","model.layers.0.input_layernorm.weight"),r=b("lm_head.q_weight","model.lm_head.q_weight"),g=b("lm_head.q_scale","model.lm_head.q_scale"),v=b("transformer.norm.weight","model.norm.weight","norm.weight"),p=32,w=[];for(let i=0;i<p;i++){const _=`transformer.h.${i}`,c=`model.layers.${i}`;w.push({qkvWeights:b(`${_}.mixer.qkv_proj.q_weight`,`${c}.self_attn.qkv_proj.q_weight`),qkvScales:b(`${_}.mixer.qkv_proj.q_scale`,`${c}.self_attn.qkv_proj.q_scale`),oProjWeights:b(`${_}.mixer.out_proj.q_weight`,`${c}.self_attn.o_proj.q_weight`),oProjScales:b(`${_}.mixer.out_proj.q_scale`,`${c}.self_attn.o_proj.q_scale`),normGamma1:b(`${_}.ln.weight`,`${c}.input_layernorm.weight`),normGamma2:b(`${_}.post_attention_layernorm.weight`,`${c}.post_attention_layernorm.weight`),ffnWeights:b(`${_}.mlp.gate_up_proj.q_weight`,`${c}.mlp.gate_up_proj.q_weight`),ffnScales:b(`${_}.mlp.gate_up_proj.q_scale`,`${c}.mlp.gate_up_proj.q_scale`),ffnDownWeights:b(`${_}.mlp.down_proj.q_weight`,`${c}.mlp.down_proj.q_weight`),ffnDownScales:b(`${_}.mlp.down_proj.q_scale`,`${c}.mlp.down_proj.q_scale`)})}return a==null||a(`All weights loaded · ${(k/1e6).toFixed(0)} MB · ${t?"OPFS active":"OPFS unavailable"}`),{device:n,embdWeights:D,embdScales:y,lmHeadWeights:r,lmHeadScales:g,initNormGamma:u,finalNormGamma:v,layers:w}}async function an(n){try{const e=await caches.keys();for(const t of e){const d=await(await caches.open(t)).match(n);if(d)return d.text()}}catch{}const a=await fetch(n);if(!a.ok)throw new Error(`HTTP ${a.status} fetching tokenizer.json`);return a.text()}const M="▁",un=new RegExp(M,"g"),sn=/^<0x([0-9A-Fa-f]{2})>$/;async function Pn(n){n==null||n("Loading tokenizer.json...");const a=G+"tokenizer.json",e=JSON.parse(await an(a)),t=e.model.vocab,o=e.model.merges,d=new Array(Math.max(...Object.values(t))+1);for(const[u,r]of Object.entries(t))d[r]=u;for(const u of e.added_tokens??[])d[u.id]=u.content;const h=new Map;for(let u=0;u<o.length;u++)h.set(o[u],u);const m=new Map;for(const u of e.added_tokens??[])m.set(u.content,u.id);const x=t["<s>"]??1,S=t["</s>"]??2,K=new Map,k=new Set;for(let u=0;u<d.length;u++){const r=d[u];if(!r)continue;const g=sn.exec(r);if(g){K.set(u,parseInt(g[1],16));continue}if(r==="<s>"||r==="</s>"||r==="<pad>"){k.add(u);continue}r.startsWith("<|")&&r.endsWith("|>")&&k.add(u)}function E(u){if(u.length<=1)return u;for(;;){let r=1/0,g=-1;for(let p=0;p<u.length-1;p++){const w=u[p]+" "+u[p+1],i=h.get(w);i!==void 0&&i<r&&(r=i,g=p)}if(g===-1)break;const v=u[g]+u[g+1];u=[...u.slice(0,g),v,...u.slice(g+2)]}return u}function b(u){const r=[],g=[...m.keys()].sort((p,w)=>w.length-p.length).map(p=>p.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")).join("|"),v=g?u.split(new RegExp(`(${g})`)):[u];for(const p of v){if(!p)continue;const w=m.get(p);if(w!==void 0){r.push(w);continue}const i=p.split(/(\s+)/);let _=!0;for(const c of i){if(!c)continue;if(/^\s+$/.test(c)){_=!1;continue}const C=(_&&r.length===0?"":M)+c;_=!1;const W=[...C],P=E(W);for(const O of P){const I=t[O];if(I!==void 0)r.push(I);else for(const B of[...O]){const z=t[B]??t["<unk>"]??0;r.push(z)}}}}return r}const D=new TextDecoder("utf-8",{fatal:!1});function y(u){let r="",g=[];const v=()=>{g.length!==0&&(r+=D.decode(Uint8Array.from(g)),g=[])};for(const p of u){if(p<0||k.has(p)){v();continue}const w=K.get(p);if(w!==void 0){g.push(w);continue}const i=d[p];i&&(v(),r+=i)}return v(),r.replace(un," ").trimStart()}return n==null||n("Tokenizer ready"),{encode:b,decode:y,bosId:x,eosId:S}}function Rn(n,a){let e="";for(const t of n)t.role==="system"?e+=`<|system|>
-${t.content}<|end|>
-`:t.role==="user"?e+=`<|user|>
-${t.content}<|end|>
-`:e+=`<|assistant|>
-${t.content}<|end|>
-`;return e+=`<|assistant|>
-`,a.encode(e)}const rn=`// INT4 DEQUANT MATMUL (subgroup variant) — same math as int4_matmul.wgsl
+import{b as V,i as q,f as H,c as Y,a as Z,k as J,r as nn,d as en,e as tn}from"./argmax-B2Isa9Fr.js";import{i as an}from"./int4_matmul_f32-BY4OHOh5.js";import{q as un}from"./qkv_fused-_Y_hop8R.js";const N="https://huggingface.co/mlc-ai/Phi-3-mini-4k-instruct-q4f16_1-MLC/resolve/main/",sn="phi3-q4f16_1-v1",M=`zero-tvm-weights-${sn}`,rn=8,on=3;async function _n(){var n,e,t,a,u;try{if(typeof navigator>"u"||!((n=navigator.storage)!=null&&n.getDirectory))return{dir:null,persisted:!1};let s=!1;try{s=await((t=(e=navigator.storage).persisted)==null?void 0:t.call(e))??!1,s||(s=await((u=(a=navigator.storage).persist)==null?void 0:u.call(a))??!1)}catch{}const f=await navigator.storage.getDirectory();try{const x=[];for await(const[w,m]of f)m.kind==="directory"&&w.startsWith("zero-tvm-weights")&&w!==M&&x.push(w);const R=f;await Promise.all(x.map(w=>R.removeEntry(w,{recursive:!0})))}catch{}return{dir:await f.getDirectoryHandle(M,{create:!0}),persisted:s}}catch{return{dir:null,persisted:!1}}}function F(n){return n.replace(/[^A-Za-z0-9._-]/g,"_")}async function fn(n,e){if(!n)return null;try{return await(await(await n.getFileHandle(F(e))).getFile()).arrayBuffer()}catch{return null}}async function dn(n,e,t){if(n)try{const u=await(await n.getFileHandle(F(e),{create:!0})).createWritable();await u.write(t),await u.close()}catch{}}async function ln(n,e=on){let t;for(let a=0;a<=e;a++){try{const u=await fetch(n,{credentials:"omit"});if(u.ok)return u;if(u.status<500&&u.status!==429)throw new Error(`HTTP ${u.status} ${u.statusText}`);t=new Error(`HTTP ${u.status} ${u.statusText}`)}catch(u){t=u}if(a<e){const u=500*Math.pow(3,a);await new Promise(s=>setTimeout(s,u))}}throw t instanceof Error?t:new Error(String(t))}async function z(n,e,t,a,u,s){const f=n.split("/").at(-1),k=m=>{u.push(dn(t,e,m))},x=await fn(t,e);if(x)return s==null||s(`[opfs] ${f}`),x;for(const m of a)try{const E=await m.match(n);if(E){s==null||s(`[cache] ${f}`);const K=await E.arrayBuffer();return k(K),K}}catch{}s==null||s(`[fetch] ${f}`);const w=await(await ln(n)).arrayBuffer();return k(w),w}async function pn(){try{if(typeof caches>"u")return[];const n=await caches.keys();return await Promise.all(n.map(e=>caches.open(e)))}catch{return[]}}async function cn(n,e,t){const a=new Array(n.length);let u=0;const s=async()=>{for(;u<n.length;){const f=u++;a[f]=await t(n[f],f)}};return await Promise.all(Array.from({length:Math.min(e,n.length)},s)),a}function gn(n){const e=[];for(const t of n.records)if("records"in t&&Array.isArray(t.records))for(const a of t.records)e.push({...a,dataPath:a.dataPath??t.dataPath});else e.push(t);return e}const bn=GPUBufferUsage.STORAGE|GPUBufferUsage.COPY_SRC|GPUBufferUsage.COPY_DST;function hn(n,e){return n?e?"OPFS persistent":"OPFS best-effort":"OPFS unavailable"}function wn(n){if(!isFinite(n)||n<=0)return"—";if(n<60)return`${Math.round(n)}s`;const e=Math.floor(n/60),t=Math.round(n-e*60);return`${e}m ${t}s`}function mn(n,e,t){const a=n.createBuffer({size:Math.max(t.nbytes,4),usage:bn,label:t.name});return n.queue.writeBuffer(a,0,new Uint8Array(e,t.byteOffset,t.nbytes)),a}async function Nn(n,e,t){const a=N;e==null||e("Loading ndarray-cache.json…");const{dir:u,persisted:s}=await _n();e==null||e(u?`OPFS ready (${M}, ${s?"persistent":"best-effort"})`:"OPFS unavailable");const f=await pn();f.length>0&&(e==null||e(`Cache API: ${f.length} store(s) open`));const k=[],x=await z(a+"ndarray-cache.json","ndarray-cache.json",u,f,k,e),R=JSON.parse(new TextDecoder().decode(x)),w=gn(R);e==null||e(`Manifest: ${w.length} parameters`);const m=new Map;for(const g of w){const p=m.get(g.dataPath);p?p.push(g):m.set(g.dataPath,[g])}const E=new Map,K=m.size,P=w.reduce((g,p)=>g+p.nbytes,0),W=performance.now();let i=0,o=0;const b=[...m.entries()];await cn(b,rn,async([g,p])=>{const h=await z(a+g,g,u,f,k,e);for(const B of p)E.set(B.name,mn(n,h,B));i++,o+=h.byteLength;const U=(performance.now()-W)/1e3,T=o/1e6/Math.max(U,.1),X=T>0?(P-o)/(T*1e6):0,j=(o/1e6).toFixed(0),Q=(P/1e6).toFixed(0);e==null||e(`[${i}/${K}] ${g} · ${j}/${Q} MB · ${T.toFixed(1)} MB/s · ETA ${wn(X)}`)});function _(...g){for(const p of g){const h=E.get(p);if(h)return h}throw new Error(`Weight not found. Tried: ${g.join(", ")}
+Available: ${[...E.keys()].slice(0,20).join(", ")}`)}const c=_("transformer.embd.q_weight","embed_tokens.q_weight","model.embed_tokens.q_weight"),v=_("transformer.embd.q_scale","embed_tokens.q_scale","model.embed_tokens.q_scale"),A=_("transformer.h.0.ln.weight","model.layers.0.input_layernorm.weight"),y=_("lm_head.q_weight","model.lm_head.q_weight"),D=_("lm_head.q_scale","model.lm_head.q_scale"),L=_("transformer.norm.weight","model.norm.weight","norm.weight"),G=32,O=[];for(let g=0;g<G;g++){const p=`transformer.h.${g}`,h=`model.layers.${g}`;O.push({qkvWeights:_(`${p}.mixer.qkv_proj.q_weight`,`${h}.self_attn.qkv_proj.q_weight`),qkvScales:_(`${p}.mixer.qkv_proj.q_scale`,`${h}.self_attn.qkv_proj.q_scale`),oProjWeights:_(`${p}.mixer.out_proj.q_weight`,`${h}.self_attn.o_proj.q_weight`),oProjScales:_(`${p}.mixer.out_proj.q_scale`,`${h}.self_attn.o_proj.q_scale`),normGamma1:_(`${p}.ln.weight`,`${h}.input_layernorm.weight`),normGamma2:_(`${p}.post_attention_layernorm.weight`,`${h}.post_attention_layernorm.weight`),ffnWeights:_(`${p}.mlp.gate_up_proj.q_weight`,`${h}.mlp.gate_up_proj.q_weight`),ffnScales:_(`${p}.mlp.gate_up_proj.q_scale`,`${h}.mlp.gate_up_proj.q_scale`),ffnDownWeights:_(`${p}.mlp.down_proj.q_weight`,`${h}.mlp.down_proj.q_weight`),ffnDownScales:_(`${p}.mlp.down_proj.q_scale`,`${h}.mlp.down_proj.q_scale`)})}k.length>0&&await Promise.allSettled(k);const C=(performance.now()-W)/1e3,I=o/1e6/Math.max(C,.1);return e==null||e(`All weights loaded · ${(P/1e6).toFixed(0)} MB in ${C.toFixed(1)}s · avg ${I.toFixed(1)} MB/s · ${hn(u,s)}`),{device:n,embdWeights:c,embdScales:v,lmHeadWeights:y,lmHeadScales:D,initNormGamma:A,finalNormGamma:L,layers:O}}async function kn(n){try{const t=await caches.keys();for(const a of t){const s=await(await caches.open(a)).match(n);if(s)return s.text()}}catch{}const e=await fetch(n);if(!e.ok)throw new Error(`HTTP ${e.status} fetching tokenizer.json`);return e.text()}const $="▁",vn=new RegExp($,"g"),An=/^<0x([0-9A-Fa-f]{2})>$/;async function Fn(n){n==null||n("Loading tokenizer.json...");const e=N+"tokenizer.json",t=JSON.parse(await kn(e)),a=t.model.vocab,u=t.model.merges,s=new Array(Math.max(...Object.values(a))+1);for(const[i,o]of Object.entries(a))s[o]=i;for(const i of t.added_tokens??[])s[i.id]=i.content;const f=new Map;for(let i=0;i<u.length;i++)f.set(u[i],i);const k=new Map;for(const i of t.added_tokens??[])k.set(i.content,i.id);const x=a["<s>"]??1,R=a["</s>"]??2,w=new Map,m=new Set;for(let i=0;i<s.length;i++){const o=s[i];if(!o)continue;const b=An.exec(o);if(b){w.set(i,parseInt(b[1],16));continue}if(o==="<s>"||o==="</s>"||o==="<pad>"){m.add(i);continue}o.startsWith("<|")&&o.endsWith("|>")&&m.add(i)}function E(i){if(i.length<=1)return i;for(;;){let o=1/0,b=-1;for(let c=0;c<i.length-1;c++){const v=i[c]+" "+i[c+1],A=f.get(v);A!==void 0&&A<o&&(o=A,b=c)}if(b===-1)break;const _=i[b]+i[b+1];i=[...i.slice(0,b),_,...i.slice(b+2)]}return i}function K(i){const o=[],b=[...k.keys()].sort((c,v)=>v.length-c.length).map(c=>c.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")).join("|"),_=b?i.split(new RegExp(`(${b})`)):[i];for(const c of _){if(!c)continue;const v=k.get(c);if(v!==void 0){o.push(v);continue}const A=c.split(/(\s+)/);let y=!0;for(const D of A){if(!D)continue;if(/^\s+$/.test(D)){y=!1;continue}const L=(y&&o.length===0?"":$)+D;y=!1;const G=[...L],O=E(G);for(const C of O){const I=a[C];if(I!==void 0)o.push(I);else for(const g of[...C]){const p=a[g]??a["<unk>"]??0;o.push(p)}}}}return o}const P=new TextDecoder("utf-8",{fatal:!1});function W(i){let o="",b=[];const _=()=>{b.length!==0&&(o+=P.decode(Uint8Array.from(b)),b=[])};for(const c of i){if(c<0||m.has(c)){_();continue}const v=w.get(c);if(v!==void 0){b.push(v);continue}const A=s[c];A&&(_(),o+=A)}return _(),o.replace(vn," ").trimStart()}return n==null||n("Tokenizer ready"),{encode:K,decode:W,bosId:x,eosId:R}}function $n(n,e){let t="";for(const a of n)a.role==="system"?t+=`<|system|>
+${a.content}<|end|>
+`:a.role==="user"?t+=`<|user|>
+${a.content}<|end|>
+`:t+=`<|assistant|>
+${a.content}<|end|>
+`;return t+=`<|assistant|>
+`,e.encode(t)}const xn=`// INT4 DEQUANT MATMUL (subgroup variant) — same math as int4_matmul.wgsl
 // but replaces the 64-thread / 6-barrier tree reduction with a single
 // subgroupAdd over a 32-thread workgroup = one subgroup.
 //
@@ -74,7 +74,7 @@ fn int4_matmul_sg(
     output_buf[row] = f16(sum);
   }
 }
-`,on=`// INT4 DEQUANT MATMUL (tiled subgroup variant) — produces ROWS_PER_WG=4
+`,En=`// INT4 DEQUANT MATMUL (tiled subgroup variant) — produces ROWS_PER_WG=4
 // output rows per workgroup. Each thread loads 8 f16 inputs per chunk once
 // and re-uses them across the 4 weight rows, so input bandwidth drops 4x vs
 // the scalar shader (which does one row per workgroup).
@@ -216,7 +216,7 @@ fn int4_matmul_tiled(
     output_buf[r3] = f16(sum3);
   }
 }
-`,_n=`// INT4 DEQUANT MATMUL (tiled-8 subgroup variant) — 8 output rows per
+`,Sn=`// INT4 DEQUANT MATMUL (tiled-8 subgroup variant) — 8 output rows per
 // workgroup. Same binding layout as int4_matmul.wgsl / int4_matmul_tiled.wgsl.
 //
 // Why 8 instead of 4: for ffnDown (K=8192, N=3072) the 4-row tile still reads
@@ -342,7 +342,7 @@ fn int4_matmul_tiled8(
     output_buf[r6] = f16(s6); output_buf[r7] = f16(s7);
   }
 }
-`,dn=`// INT4 DEQUANT MATMUL WITH F32 OUTPUT (subgroup variant) — for the LM head.
+`,Rn=`// INT4 DEQUANT MATMUL WITH F32 OUTPUT (subgroup variant) — for the LM head.
 // Same structure as int4_matmul_sg.wgsl but writes f32 logits.
 
 enable f16;
@@ -397,7 +397,7 @@ fn int4_matmul_f32_sg(
     output_buf[row] = sum;
   }
 }
-`,fn=`// INT4 DEQUANT MATMUL WITH F32 OUTPUT (tiled subgroup variant).
+`,Kn=`// INT4 DEQUANT MATMUL WITH F32 OUTPUT (tiled subgroup variant).
 // Same design as int4_matmul_tiled.wgsl but writes f32 logits for the LM head.
 
 enable f16;
@@ -521,7 +521,7 @@ fn int4_matmul_f32_tiled(
     output_buf[r3] = sum3;
   }
 }
-`,ln=`// INT4 DEQUANT MATMUL WITH F32 OUTPUT (tiled-8 subgroup variant).
+`,Pn=`// INT4 DEQUANT MATMUL WITH F32 OUTPUT (tiled-8 subgroup variant).
 // Same design as int4_matmul_tiled8.wgsl but writes f32 logits for the LM head.
 // 8 rows per WG × 32 threads per WG.
 
@@ -633,7 +633,7 @@ fn int4_matmul_f32_tiled8(
     output_buf[r4] = s4; output_buf[r5] = s5; output_buf[r6] = s6; output_buf[r7] = s7;
   }
 }
-`,pn=`// INT4 DEQUANT MATMUL — batched (M=4) variant of int4_matmul_tiled.wgsl.
+`,yn=`// INT4 DEQUANT MATMUL — batched (M=4) variant of int4_matmul_tiled.wgsl.
 //
 // Shape: input [M, K] × weights [N, K] → output [M, N]    with M fixed at 4.
 // Each WG computes a TILE_M × ROWS_PER_WG = 4 × 4 = 16 output cells:
@@ -825,7 +825,7 @@ fn int4_matmul_batched_m4(
     output_buf[3u * N + r2] = f16(s32); output_buf[3u * N + r3] = f16(s33);
   }
 }
-`,cn=`// QKV_FUSED_SG — subgroup-reduction variant of qkv_fused.wgsl.
+`,Dn=`// QKV_FUSED_SG — subgroup-reduction variant of qkv_fused.wgsl.
 //
 // Same fusion (QKV matmul + RoPE + KV append in one dispatch) and same bind
 // group layout. The only difference is the tail reduction: the scalar variant
@@ -969,7 +969,7 @@ fn qkv_fused_sg(
     kv_pages[k_base + dim_lo + 48] = f16(rot_hi);
   }
 }
-`,gn=`// QKV_FUSED_TILED_SG — tiled + subgroup variant of qkv_fused_sg.wgsl.
+`,Cn=`// QKV_FUSED_TILED_SG — tiled + subgroup variant of qkv_fused_sg.wgsl.
 //
 // NEGATIVE RESULT on Apple M-series: both 4-pair (57% slower) and 2-pair
 // (78% slower on the qkv kernel) versions regressed vs qkv_fused_sg. See
@@ -1128,7 +1128,7 @@ fn qkv_fused_tiled_sg(
     }
   }
 }
-`,bn=`// QKV_FUSED_TILED_2SG — 2-subgroup, 2-pair tile variant.
+`,Wn=`// QKV_FUSED_TILED_2SG — 2-subgroup, 2-pair tile variant.
 //
 // Motivation: previous qkv_fused_tiled_sg.wgsl tried 2 pairs / 32 threads /
 // 2304 WGs; threads-in-flight dropped 4× vs the \`_sg\` baseline (9216 → 2304
@@ -1290,7 +1290,7 @@ fn qkv_fused_tiled2sg(
     kv_pages[k_base + i32(dim_lo) + 48] = f16(rot_hi);
   }
 }
-`,hn=`// QKV_FUSED_SCRATCH — int8-KV-mode variant of qkv_fused.wgsl.
+`,On=`// QKV_FUSED_SCRATCH — int8-KV-mode variant of qkv_fused.wgsl.
 //
 // Same math as qkv_fused: one workgroup per (group, head, dim-pair), computes
 // two output rows, applies RoPE to Q/K in registers. The only change is
@@ -1424,7 +1424,7 @@ fn qkv_fused_scratch(
     k_slot[base + 48] = f16(rot_hi);
   }
 }
-`,wn=`// KV_QUANTIZE_INT8 — int8 quantize of one (K,V) slot per layer, per decode step.
+`,In=`// KV_QUANTIZE_INT8 — int8 quantize of one (K,V) slot per layer, per decode step.
 //
 // Input:  k_slot [3072 f16], v_slot [3072 f16]  (from qkv_fused_scratch)
 // Output: kv_pages_i8 (packed int8 in u32), kv_scales (per-(head, side) f16)
@@ -1578,7 +1578,7 @@ fn kv_quantize_int8(
                      + podArgs.pages_elem_offset;
   pages_i8[word_idx] = packed;
 }
-`,mn=`// PAGED KV ATTENTION — int8 KV cache variant of attention.wgsl.
+`,qn=`// PAGED KV ATTENTION — int8 KV cache variant of attention.wgsl.
 //
 // Identical online-softmax math; the only change is reading K,V as int8 + f16
 // scale instead of f16. Per-row scale (one scale per head-slot-side) keeps
@@ -1729,7 +1729,7 @@ fn attention_int8(
     output_buf[batch * 3072 + head * 96 + tid * 3 + 2] = f16(o2 * inv_d);
   }
 }
-`,kn=`// PAGED KV ATTENTION (subgroup variant) — same math as attention.wgsl,
+`,Ln=`// PAGED KV ATTENTION (subgroup variant) — same math as attention.wgsl,
 // but replaces the 6-barrier tree reduction with a single subgroupAdd.
 //
 // Assumes subgroup size >= 32 (true on every shipping WebGPU backend that
@@ -1825,7 +1825,7 @@ fn attention_sg(
     output_buf[batch * 3072 + head * 96 + tid * 3 + 2] = f16(o2 * inv_d);
   }
 }
-`,vn=`// FUSED_FFN_TILED_SG — tiled + subgroup variant of fused_ffn.wgsl.
+`,Gn=`// FUSED_FFN_TILED_SG — tiled + subgroup variant of fused_ffn.wgsl.
 //
 // Same fusion (gate+up int4 matmul + SiLU + elementwise multiply in one
 // dispatch) and same bind-group layout as fused_ffn.wgsl, so chat.ts can swap
@@ -2045,7 +2045,7 @@ fn fused_ffn_tiled_sg(
     output_buf[gr3] = f16(u3 * silu3);
   }
 }
-`,An=`// ARGMAX (subgroup variant) — same result as argmax.wgsl.
+`,Tn=`// ARGMAX (subgroup variant) — same result as argmax.wgsl.
 // Two-level: (1) per-subgroup butterfly reduction using subgroupShuffleXor,
 // (2) thread 0 scans the 8 subgroup winners serially. Replaces the 8 barriers
 // of the scalar tree reduction with 1.
@@ -2118,4 +2118,4 @@ fn argmax_sg(
     result[0] = idx;
   }
 }
-`,A={D:3072,HEADS:32,HEAD_DIM:96,LAYERS:32,FFN:8192,VOCAB:32064,QKV_DIM:9216,PAGE_SIZE:16,MAX_PAGES:257,MAX_SEQ:4096};function s(n,a,e){const t=n.createShaderModule({code:a});return n.createComputePipeline({layout:"auto",compute:{module:t,entryPoint:e}})}function f(n,a,e,t){return n.createBuffer({size:Math.max(a,4),usage:e|GPUBufferUsage.COPY_DST|GPUBufferUsage.COPY_SRC,label:t})}const l=GPUBufferUsage.STORAGE;function Dn(n,a={}){console.log("[compiler] Creating pipelines...");const e=!!a.subgroups;e&&console.log("[compiler] subgroups feature enabled — compiling _sg variants");const t={embedding:s(n,V,"embedding"),rmsNorm:s(n,Q,"rms_norm"),qkvMatmul:s(n,R,"int4_matmul"),int4Matmul:s(n,R,"int4_matmul"),int4MatmulSg:e?s(n,rn,"int4_matmul_sg"):null,int4MatmulTiled:e?s(n,on,"int4_matmul_tiled"):null,int4MatmulTiled8:e?s(n,_n,"int4_matmul_tiled8"):null,int4MatmulF32Sg:e?s(n,dn,"int4_matmul_f32_sg"):null,int4MatmulF32Tiled:e?s(n,fn,"int4_matmul_f32_tiled"):null,int4MatmulF32Tiled8:e?s(n,ln,"int4_matmul_f32_tiled8"):null,int4MatmulBatchedM4:e?s(n,pn,"int4_matmul_batched_m4"):null,rope:s(n,j,"rope_kernel"),kvAppend:s(n,X,"kv_append"),qkvFused:s(n,Y,"qkv_fused"),qkvFusedSg:e?s(n,cn,"qkv_fused_sg"):null,qkvFusedTiledSg:e?s(n,gn,"qkv_fused_tiled_sg"):null,qkvFusedTiled2Sg:e?s(n,bn,"qkv_fused_tiled2sg"):null,qkvFusedScratch:s(n,hn,"qkv_fused_scratch"),kvQuantizeInt8:s(n,wn,"kv_quantize_int8"),attentionInt8:s(n,mn,"attention_int8"),attention:s(n,$,"attention"),attentionSg:e?s(n,kn,"attention_sg"):null,oProjMatmul:s(n,R,"int4_matmul"),addNorm:s(n,F,"add_norm"),fusedFfn:s(n,U,"fused_ffn_kernel"),fusedFfnTiledSg:e?s(n,vn,"fused_ffn_tiled_sg"):null,ffnDownMatmul:s(n,R,"int4_matmul"),lmHead:s(n,H,"int4_matmul_f32"),argmax:s(n,N,"argmax_kernel"),argmaxSg:e?s(n,An,"argmax_sg"):null};console.log("[compiler] Allocating buffers...");const o=2,d=A.D,h={hidden1:f(n,d*o,l,"hidden1"),hidden2:f(n,d*o,l,"hidden2"),residual:f(n,d*o,l,"residual"),qkvOut:f(n,A.QKV_DIM*o,l,"qkvOut"),qOut:f(n,d*o,l,"qOut"),kOut:f(n,d*o,l,"kOut"),vOut:f(n,d*o,l,"vOut"),attnOut:f(n,d*o,l,"attnOut"),ffnOut:f(n,A.FFN*o,l,"ffnOut"),logits:f(n,A.VOCAB*4,l,"logits"),tokenResult:f(n,4,l,"tokenResult"),inputIds:f(n,A.MAX_SEQ*4,l,"inputIds"),positionMap:f(n,A.MAX_SEQ*4,l,"positionMap"),pageTable:f(n,A.MAX_PAGES*4,l,"pageTable"),pageIndptr:f(n,8,l,"pageIndptr"),pageValues:f(n,A.MAX_PAGES*4,l,"pageValues"),lengthInfo:f(n,12,l,"lengthInfo"),embdWeights:f(n,4,l,"embdWeights_placeholder"),embdScales:f(n,4,l,"embdScales_placeholder"),lmHeadWeights:f(n,4,l,"lmHeadWeights_placeholder"),lmHeadScales:f(n,4,l,"lmHeadScales_placeholder"),initNormGamma:f(n,d*o,l,"initNormGamma")};return console.log(`[compiler] Done: ${Object.keys(t).length} pipelines, ${Object.keys(h).length} buffers`),{pipelines:t,buffers:h}}export{A as P,Kn as a,Rn as b,Dn as c,Pn as l};
+`,S={D:3072,HEADS:32,HEAD_DIM:96,LAYERS:32,FFN:8192,VOCAB:32064,QKV_DIM:9216,PAGE_SIZE:16,MAX_PAGES:257,MAX_SEQ:4096};function r(n,e,t){const a=n.createShaderModule({code:e});return n.createComputePipeline({layout:"auto",compute:{module:a,entryPoint:t}})}function d(n,e,t,a){return n.createBuffer({size:Math.max(e,4),usage:t|GPUBufferUsage.COPY_DST|GPUBufferUsage.COPY_SRC,label:a})}const l=GPUBufferUsage.STORAGE;function Un(n,e={}){console.log("[compiler] Creating pipelines...");const t=!!e.subgroups;t&&console.log("[compiler] subgroups feature enabled — compiling _sg variants");const a={embedding:r(n,tn,"embedding"),rmsNorm:r(n,en,"rms_norm"),qkvMatmul:r(n,q,"int4_matmul"),int4Matmul:r(n,q,"int4_matmul"),int4MatmulSg:t?r(n,xn,"int4_matmul_sg"):null,int4MatmulTiled:t?r(n,En,"int4_matmul_tiled"):null,int4MatmulTiled8:t?r(n,Sn,"int4_matmul_tiled8"):null,int4MatmulF32Sg:t?r(n,Rn,"int4_matmul_f32_sg"):null,int4MatmulF32Tiled:t?r(n,Kn,"int4_matmul_f32_tiled"):null,int4MatmulF32Tiled8:t?r(n,Pn,"int4_matmul_f32_tiled8"):null,int4MatmulBatchedM4:t?r(n,yn,"int4_matmul_batched_m4"):null,rope:r(n,nn,"rope_kernel"),kvAppend:r(n,J,"kv_append"),qkvFused:r(n,un,"qkv_fused"),qkvFusedSg:t?r(n,Dn,"qkv_fused_sg"):null,qkvFusedTiledSg:t?r(n,Cn,"qkv_fused_tiled_sg"):null,qkvFusedTiled2Sg:t?r(n,Wn,"qkv_fused_tiled2sg"):null,qkvFusedScratch:r(n,On,"qkv_fused_scratch"),kvQuantizeInt8:r(n,In,"kv_quantize_int8"),attentionInt8:r(n,qn,"attention_int8"),attention:r(n,Z,"attention"),attentionSg:t?r(n,Ln,"attention_sg"):null,oProjMatmul:r(n,q,"int4_matmul"),addNorm:r(n,Y,"add_norm"),fusedFfn:r(n,H,"fused_ffn_kernel"),fusedFfnTiledSg:t?r(n,Gn,"fused_ffn_tiled_sg"):null,ffnDownMatmul:r(n,q,"int4_matmul"),lmHead:r(n,an,"int4_matmul_f32"),argmax:r(n,V,"argmax_kernel"),argmaxSg:t?r(n,Tn,"argmax_sg"):null};console.log("[compiler] Allocating buffers...");const u=2,s=S.D,f={hidden1:d(n,s*u,l,"hidden1"),hidden2:d(n,s*u,l,"hidden2"),residual:d(n,s*u,l,"residual"),qkvOut:d(n,S.QKV_DIM*u,l,"qkvOut"),qOut:d(n,s*u,l,"qOut"),kOut:d(n,s*u,l,"kOut"),vOut:d(n,s*u,l,"vOut"),attnOut:d(n,s*u,l,"attnOut"),ffnOut:d(n,S.FFN*u,l,"ffnOut"),logits:d(n,S.VOCAB*4,l,"logits"),tokenResult:d(n,4,l,"tokenResult"),inputIds:d(n,S.MAX_SEQ*4,l,"inputIds"),positionMap:d(n,S.MAX_SEQ*4,l,"positionMap"),pageTable:d(n,S.MAX_PAGES*4,l,"pageTable"),pageIndptr:d(n,8,l,"pageIndptr"),pageValues:d(n,S.MAX_PAGES*4,l,"pageValues"),lengthInfo:d(n,12,l,"lengthInfo"),embdWeights:d(n,4,l,"embdWeights_placeholder"),embdScales:d(n,4,l,"embdScales_placeholder"),lmHeadWeights:d(n,4,l,"lmHeadWeights_placeholder"),lmHeadScales:d(n,4,l,"lmHeadScales_placeholder"),initNormGamma:d(n,s*u,l,"initNormGamma")};return console.log(`[compiler] Done: ${Object.keys(a).length} pipelines, ${Object.keys(f).length} buffers`),{pipelines:a,buffers:f}}export{S as P,Nn as a,$n as b,Un as c,Fn as l};
