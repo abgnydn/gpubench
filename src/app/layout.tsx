@@ -63,10 +63,13 @@ const jsonLd = {
       "name": "Ahmet Baris Gunaydin",
       "url": "https://gpubench.dev",
       "sameAs": [
+        "https://barisgunaydin.com",
         "https://kernelfusion.dev",
         "https://gpubench.dev",
         "https://zerotvm.com",
         "https://webgpu-dna.vercel.app",
+        "https://markview.ai",
+        "https://safenpm.dev",
         "https://github.com/abgnydn",
         "https://www.linkedin.com/in/abgnydn/"
       ]
