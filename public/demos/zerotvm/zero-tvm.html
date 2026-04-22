@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Zero-TVM Chat — Phi-3-mini on 10 hand-written WGSL shaders</title>
+  <meta name="description" content="Live browser chat with Phi-3-mini decoding at ~40 tok/s on raw WebGPU. No WebLLM, no TVM, no WASM — 10 kernel roles across 27 WGSL files.">
+  <meta name="theme-color" content="#0a0a0c">
+  <link rel="icon" href="/demos/zerotvm/favicon.svg" type="image/svg+xml">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://zerotvm.com/zero-tvm.html">
+  <meta property="og:title" content="Zero-TVM Chat — Phi-3-mini on 10 hand-written WGSL shaders">
+  <meta property="og:description" content="Live browser chat with Phi-3-mini decoding at ~40 tok/s on raw WebGPU. No WebLLM, no TVM, no WASM — 10 kernel roles across 27 WGSL files.">
+  <meta property="og:image" content="https://zerotvm.com/og.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Zero-TVM Chat — Phi-3-mini on 10 hand-written WGSL shaders">
+  <meta name="twitter:description" content="Live browser chat with Phi-3-mini decoding at ~40 tok/s on raw WebGPU. No WebLLM, no TVM, no WASM — 10 kernel roles across 27 WGSL files.">
+  <meta name="twitter:image" content="https://zerotvm.com/og.png">
+  <link rel="stylesheet" href="/demos/zerotvm/style.css">
+  <script type="module" crossorigin src="/demos/zerotvm/assets/zero-tvm-Cv1Qt1L1.js"></script>
+  <link rel="modulepreload" crossorigin href="/demos/zerotvm/assets/modulepreload-polyfill-B5Qt9EMX.js">
+  <link rel="modulepreload" crossorigin href="/demos/zerotvm/assets/argmax-B2Isa9Fr.js">
+  <link rel="modulepreload" crossorigin href="/demos/zerotvm/assets/int4_matmul_f32-BY4OHOh5.js">
+  <link rel="modulepreload" crossorigin href="/demos/zerotvm/assets/qkv_fused-_Y_hop8R.js">
+  <link rel="modulepreload" crossorigin href="/demos/zerotvm/assets/compiler-rA8Xb5-N.js">
+
+  <!-- === EMBED MODE (injected by scripts/sync-zerotvm.mjs) === -->
+  <script>
+    // Pre-paint class toggle — no flash of upstream chrome when we
+    // embed this file inside the /zerotvm Next page.
+    if (new URLSearchParams(location.search).get("embed") === "1") {
+      document.documentElement.classList.add("embed");
+    }
+  </script>
+  <style>
+    /* Upstream's own header + back-link + footer duplicate the
+       gpubench nav when embedded. Hide them, but keep #stats and
+       #badge so the user still sees load + tok/s feedback. */
+    html.embed .back-link,
+    html.embed .model-info,
+    html.embed .header-spacer,
+    html.embed footer,
+    html.embed .app-footer { display: none !important; }
+    html.embed .app-header { justify-content: flex-end !important; }
+    html.embed,
+    html.embed body { min-height: 100% !important; height: 100%; }
+  </style>
+  <!-- gpubench telemetry: defines window.reportDevice(workload,fitness,gen,speed). -->
+  <script src="/demos/device-telemetry.js"></script>
+  <script>
+    // Fallback telemetry wiring. Upstream's Apr 2026 bundle removed
+    // the direct reportDevice() call, so we MutationObserve the
+    // #stats element (which the chat populates with "N tok/s · …"
+    // during decode) and forward whatever number it shows.
+    // device-telemetry.js rate-limits at 5s, so we don't flood.
+    window.addEventListener("DOMContentLoaded", () => {
+      const stats = document.getElementById("stats");
+      if (!stats || typeof window.reportDevice !== "function") return;
+      const obs = new MutationObserver(() => {
+        const m = /([\d.]+)\s*tok\/s/i.exec(stats.textContent || "");
+        if (!m) return;
+        const speed = Number(m[1]);
+        if (!Number.isFinite(speed) || speed <= 0) return;
+        window.reportDevice("Zero-TVM Phi-3-mini", null, null, speed);
+      });
+      obs.observe(stats, { childList: true, characterData: true, subtree: true });
+    });
+  </script>
+  <!-- === /EMBED MODE === -->
+
+</head>
+<body>
+  <div class="container">
+    <header>
+      <a href="https://zerotvm.com/" class="back-link">← zerotvm.com</a>
+      <h1>Zero TVM</h1>
+      <span id="badge" class="badge loading">Loading...</span>
+      <span id="stats" class="stats"></span>
+    </header>
+    <div id="chat" class="chat"></div>
+    <div class="input-row">
+      <input id="inp" type="text" placeholder="Type a message..." disabled>
+      <button id="btn" disabled>Send</button>
+    </div>
+    <pre id="log" class="log"></pre>
+  </div>
+  <footer>Zero WebLLM. Zero TVM. 11 WGSL shaders. Weights from HuggingFace cache.</footer>
+</body>
+</html>

@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint src/",
     "test": "vitest run",
-    "check": "tsc --noEmit && eslint src/ && vitest run"
+    "check": "tsc --noEmit && eslint src/ && vitest run",
+    "sync:zerotvm": "node scripts/sync-zerotvm.mjs"
   },
   "keywords": [],
   "author": "",

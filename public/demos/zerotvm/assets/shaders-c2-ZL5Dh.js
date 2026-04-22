@@ -1,7 +1,0 @@
-import"./modulepreload-polyfill-B5Qt9EMX.js";import{p,L as l,M as u,g}from"./capture-CptJQaKC.js";const n=r=>{const o=document.getElementById("log");o.textContent+=r+`
-`,o.scrollTop=o.scrollHeight};async function h(){n("Loading model to capture shaders...");const r=new l;if(navigator.gpu){const e=navigator.gpu.requestAdapter.bind(navigator.gpu);navigator.gpu.requestAdapter=async function(...a){const t=await e(...a);if(!t)return t;const s=t.requestDevice.bind(t);return t.requestDevice=async function(...d){const c=await s(...d);return p(c),c},t}}await r.load(u.PHI3_MINI_Q4,e=>n(e)),await r.chat("hi",()=>{});const o=g();if(!o){n("ERROR: No capture");return}for(const e of o.pipelines){const a=o.shaders[e.shaderIndex];if(!a){n(`
---- pipeline ${e.index}: shader ${e.shaderIndex} NOT FOUND ---`);continue}n(`
-${"=".repeat(80)}`),n(`  [${e.index}] ${e.entryPoint} (shader #${e.shaderIndex}, ${a.code.split(`
-`).length} lines)`),n(`${"=".repeat(80)}`),n(a.code)}n(`
-
-Done. All key shader sources dumped.`);const i=document.createElement("button");i.textContent="Download Shaders",i.style.cssText="position:fixed;top:10px;right:10px;padding:10px 20px;background:#4a9eff;color:white;border:none;border-radius:6px;cursor:pointer;z-index:9999",i.onclick=()=>{const e=document.getElementById("log"),a=new Blob([e.textContent??""],{type:"text/plain"}),t=document.createElement("a");t.href=URL.createObjectURL(a),t.download=`tvm-shaders-${Date.now()}.txt`,t.click()},document.body.appendChild(i)}h().catch(r=>n(`FATAL: ${r}`));

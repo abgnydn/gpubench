@@ -7,10 +7,12 @@ import { LINKS } from "@/lib/constants";
  * /zerotvm — hosts the Zero-TVM Phi-3 chat demo inside the standard
  * gpubench layout (shared logo + TabSwitcher at top).
  *
- * The chat is a pre-bundled Vite module at /demos/zerotvm-chat.html.
- * Rather than porting ~6 MB of compiled WGSL/tokenizer/weights logic
- * into React, we render it in an iframe with ?embed=1 so the HTML
- * file hides its own redundant nav/footer and fills this container.
+ * The chat is a mirror of zerotvm.com's own bundle, synced into
+ * /demos/zerotvm/zero-tvm.html by scripts/sync-zerotvm.mjs. Serving
+ * same-origin is what makes telemetry (POST /api/device) land on
+ * gpubench rather than zerotvm.com. The sync script also injects
+ * an `?embed=1` handler that hides upstream's own header/back-link/
+ * footer (we already own that chrome out here).
  *
  * Above the iframe there's a compact info strip — Zero-TVM is a
  * separate project (not gpubench), so users landing on this tab
@@ -165,7 +167,7 @@ export default function ZeroTvmPage() {
           raw iframe. */}
       <div className="flex-1 max-w-5xl w-full mx-auto px-6 pb-6 min-h-0">
         <iframe
-          src="/demos/zerotvm-chat.html?embed=1"
+          src="/demos/zerotvm/zero-tvm.html?embed=1"
           title="Zero-TVM Phi-3 Chat"
           className="w-full h-full rounded-xl border border-bench-border bg-bench-surface"
           // webgpu + storage-access required for GPU inference + cached
