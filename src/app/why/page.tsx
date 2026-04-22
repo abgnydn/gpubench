@@ -98,8 +98,8 @@ export default function WhyPage() {
           </p>
           <div className="grid grid-cols-3 gap-4">
             {[
-              { number: "4,081\u00D7", label: "Apple Silicon average\n487 real-world devices" },
-              { number: "826\u00D7", label: "Android phones average\nQualcomm Adreno" },
+              { number: "2,865\u00D7", label: "Apple Silicon average\n592 real-world devices" },
+              { number: "623\u00D7", label: "Android phones average\nQualcomm Adreno" },
               { number: "0", label: "things to install\njust open Chrome" },
             ].map((s) => (
               <div key={s.number} className="card text-center py-8">
@@ -191,7 +191,7 @@ export default function WhyPage() {
           <div className="border-l-2 border-bench-accent/30 pl-6 py-2 mb-6">
             <p className="text-lg text-bench-muted italic leading-relaxed">
               The paper measured 159&ndash;720&times; on two machines.
-              Then 487 people ran it on their own devices, and the numbers got bigger.
+              Then 592 people ran it on their own devices, and the numbers got bigger.
             </p>
           </div>
           <p className="text-sm text-bench-muted leading-relaxed mb-4">
@@ -200,9 +200,9 @@ export default function WhyPage() {
             WebGPU 159&times; over PyTorch MPS. The pattern was consistent: fusion eliminates dispatch overhead.
           </p>
           <p className="text-sm text-bench-muted leading-relaxed">
-            Since publishing, 487 devices have confirmed this &mdash; and the real-world numbers are larger. Apple Silicon
-            averages 4,081&times;. Qualcomm Adreno (the chip in most Android phones) averages 826&times;. NVIDIA desktops
-            average 70&times;.
+            Since publishing, 592 devices have confirmed this &mdash; and the real-world numbers are larger. Apple Silicon
+            averages 2,865&times;. Qualcomm Adreno (the chip in most Android phones) averages 623&times;. NVIDIA desktops
+            average 79&times;.
           </p>
         </section>
 
@@ -220,8 +220,8 @@ export default function WhyPage() {
             </p>
             <p>
               Kernel fusion eliminates dispatch overhead. So the worse a device is at dispatching, the more it benefits.
-              NVIDIA desktop GPUs (good dispatching) see ~70&times;. Apple Silicon laptops see ~4,081&times;. Android phones
-              see ~826&times;. <strong className="text-bench-text">The devices that need fusion most, benefit from it most.</strong>
+              NVIDIA desktop GPUs (good dispatching) see ~79&times;. Apple Silicon laptops see ~2,865&times;. Android phones
+              see ~623&times;. <strong className="text-bench-text">The devices that need fusion most, benefit from it most.</strong>
             </p>
           </div>
         </section>

@@ -50,12 +50,12 @@ export const STATS = {
   tritonOverPytorch: "27",
   browserOverhead: "1.92",
   fusionAblation: "2.18",
-  // Real-world numbers (487 devices, 8 GPU vendors)
-  appleAvgSpeedup: "4081",
-  adrenoAvgSpeedup: "826",
-  nvidiaAvgSpeedup: "70",
-  armAvgSpeedup: "55",
-  totalRuns: "487",
+  // Real-world numbers (592 devices, 7 GPU vendors)
+  appleAvgSpeedup: "2865",
+  adrenoAvgSpeedup: "623",
+  nvidiaAvgSpeedup: "79",
+  armAvgSpeedup: "56",
+  totalRuns: "592",
   mobileTokensPerSecAvg: "15000",
   mobileTokensPerSecPeak: "213000",
 } as const;

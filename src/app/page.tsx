@@ -368,7 +368,7 @@ export default function HomePage() {
 
         <PaperCard
           title="Single-Kernel Fusion for Sequential Fitness Evaluation via WebGPU Compute Shaders"
-          description="487 real-world devices: 4,081× avg on Apple Silicon, 826× on phones. Originally measured at 159× (WebGPU, M2 Pro) and 720× (CUDA, T4) in the paper."
+          description="592 real-world devices: 2,865× avg on Apple Silicon, 623× on phones. Originally measured at 159× (WebGPU, M2 Pro) and 720× (CUDA, T4) in the paper."
           doi={LINKS.ecDoi}
           doiLabel={LINKS.ecDoiShort}
         />

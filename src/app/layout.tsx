@@ -12,7 +12,7 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://gpubench.dev"),
   title: "WebGPU Bench — How fast is your GPU in the browser?",
   description:
-    "Run real WebGPU compute benchmarks. 487 devices tested — kernel fusion averages 4,081x on Apple Silicon, 826x on phones. No install — just click Run.",
+    "Run real WebGPU compute benchmarks. 592 devices tested — kernel fusion averages 2,865x on Apple Silicon, 623x on phones. No install — just click Run.",
   keywords: [
     "WebGPU",
     "benchmark",
@@ -25,16 +25,16 @@ export const metadata: Metadata = {
   openGraph: {
     title: "WebGPU Bench — How fast is your GPU in the browser?",
     description:
-      "487 devices tested. Kernel fusion: 4,081x on Apple Silicon, 826x on phones. Test yours — no install required.",
+      "592 devices tested. Kernel fusion: 2,865x on Apple Silicon, 623x on phones. Test yours — no install required.",
     type: "website",
     url: "https://gpubench.dev",
     siteName: "WebGPU Bench",
-    images: [{ url: "/og.png", width: 1200, height: 630, alt: "WebGPU Bench — 4,081x Apple Silicon, 826x phones, 487 devices" }],
+    images: [{ url: "/og.png", width: 1200, height: 630, alt: "WebGPU Bench — 2,865x Apple Silicon, 623x phones, 592 devices" }],
   },
   twitter: {
     card: "summary_large_image",
     title: "WebGPU Bench — How fast is your GPU in the browser?",
-    description: "487 devices tested. Kernel fusion: 4,081x on Apple Silicon, 826x on phones. No install required.",
+    description: "592 devices tested. Kernel fusion: 2,865x on Apple Silicon, 623x on phones. No install required.",
     images: ["/og.png"],
   },
 };
@@ -49,7 +49,7 @@ const jsonLd = {
       "url": "https://gpubench.dev",
       "applicationCategory": "DeveloperApplication",
       "operatingSystem": "Any (WebGPU browser)",
-      "description": "Open WebGPU compute benchmarks. 487 devices tested — Rastrigin, N-body, Monte Carlo Pi, RL environments.",
+      "description": "Open WebGPU compute benchmarks. 592 devices tested — Rastrigin, N-body, Monte Carlo Pi, RL environments.",
       "author": { "@id": "https://gpubench.dev#author" },
       "isPartOf": {
         "@type": "CreativeWork",
