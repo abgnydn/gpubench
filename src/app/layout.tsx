@@ -10,6 +10,7 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://gpubench.dev"),
+  alternates: { canonical: "/" },
   title: "WebGPU Bench — How fast is your GPU in the browser?",
   description:
     "Run real WebGPU compute benchmarks. 592 devices tested — kernel fusion averages 2,865x on Apple Silicon, 623x on phones. No install — just click Run.",
@@ -67,7 +68,8 @@ const jsonLd = {
         "https://kernelfusion.dev",
         "https://gpubench.dev",
         "https://zerotvm.com",
-        "https://webgpu-dna.vercel.app",
+        "https://webgpudna.com",
+        "https://neuropulse.live",
         "https://markview.ai",
         "https://safenpm.dev",
         "https://github.com/abgnydn",

@@ -3,6 +3,12 @@
  *
  * Generates fused and unfused transformer shaders for any configuration.
  * Mirrors the pattern from webgpu-kernel-fusion: constants baked at generation time.
+ *
+ * SOURCE OF TRUTH: ~/sites-shared/shader-gen.js
+ * Do not edit the copies at:
+ *   - kernelfusion/src/lib/shader-gen.js
+ *   - gpubench/src/lib/shader-gen.js
+ * Edit here and run `node ~/sites-shared/sync.mjs` to propagate.
  */
 
 export function generateConfig(D, nHeads, ffnMul, seqLen, nLayers) {
@@ -361,11 +367,6 @@ export function generateParallelFusedShader(cfg, WG = 64) {
   o.B1 = pos; pos += DF;
   o.W2 = pos; pos += DF * D;
   o.B2 = pos; pos += D;
-
-  // Each thread handles D/WG elements of the hidden dim (for LN, projections)
-  // For FFN up-projection: each thread handles DF/WG elements
-  const elemsPerThread = Math.ceil(D / WG);
-  const ffnElemsPerThread = Math.ceil(DF / WG);
 
   return /* wgsl */ `
 // PARALLEL FUSED TRANSFORMER — ${NL}L, D=${D}, H=${NH}, FFN=${DF}, SEQ=${SL}, WG=${WG}

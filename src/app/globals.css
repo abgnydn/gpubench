@@ -22,6 +22,14 @@
   --bench-green: #4ade80;
   --bench-yellow: #facc15;
   --bench-red: #f87171;
+
+  /* ── canonical cross-site alias layer (see ~/sites-shared/tokens.css) ── */
+  --bg:      var(--bench-bg);
+  --surface: var(--bench-surface);
+  --border:  var(--bench-border);
+  --text:    var(--bench-text);
+  --muted:   var(--bench-muted);
+  --accent:  var(--bench-accent);
 }
 
 * {

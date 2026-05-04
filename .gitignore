@@ -9,3 +9,6 @@ tsconfig.tsbuildinfo
 test-results/
 playwright-report/
 playwright/.cache/
+
+# Claude Code local state (per-machine launch.json, settings, worktrees)
+.claude/

@@ -1,7 +1,14 @@
-// ═══════════════════════════════════════════
-// Single source of truth for all external links
-// Update here, changes everywhere.
-// ═══════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
+// Project-specific links for gpubench.dev
+//
+// Cross-site data lives in ./sites.ts — synced from
+// ~/sites-shared/sites.ts. DO NOT duplicate SITES URLs here.
+// ═══════════════════════════════════════════════════════════
+
+import { SITES } from "./sites";
+
+export { SITES, CROSSLINKS, AUTHOR, SAME_AS } from "./sites";
+export type { SiteKey, SiteInfo } from "./sites";
 
 const EC_DOI = "10.5281/zenodo.19343570";
 const TRANSFORMER_DOI = "10.5281/zenodo.19344277";
@@ -17,29 +24,29 @@ export const LINKS = {
   paper: "https://github.com/abgnydn/webgpu-kernel-fusion",
   transformerPaper: "https://github.com/abgnydn/webgpu-transformer-fusion",
   repo: "https://github.com/abgnydn/gpubench",
-  research: "https://kernelfusion.dev",
-  site: "https://gpubench.dev",
+  research: SITES.kernelfusion.url,
+  site: SITES.gpubench.url,
 
-  // Zero-TVM — separate project, surfaced on /zerotvm. URL set
-  // mirrors the top-level pages on zerotvm.com (as of 2026-04):
-  // home, chat, docs, architecture, plus the comparison /
-  // introspection tools (dispatch viz, WebLLM bench, compiler
-  // chat, TVM dump, shader source, validator).
-  zerotvmSite: "https://zerotvm.com",
-  zerotvmRepo: "https://github.com/abgnydn/zero-tvm",
-  zerotvmChat: "https://zerotvm.com/zero-tvm.html",
-  zerotvmDocs: "https://zerotvm.com/docs.html",
-  zerotvmArchitecture: "https://zerotvm.com/architecture.html",
-  zerotvmDispatchViz: "https://zerotvm.com/demo.html",
-  zerotvmWebllmBench: "https://zerotvm.com/webllm-bench.html",
-  zerotvmCompilerChat: "https://zerotvm.com/compiler-chat.html",
-  zerotvmShaderDump: "https://zerotvm.com/dump.html",
-  zerotvmShaderSource: "https://zerotvm.com/shaders.html",
-  zerotvmValidate: "https://zerotvm.com/validate.html",
+  // Zero-TVM — nested pages under zerotvm.com
+  zerotvmSite: SITES.zerotvm.url,
+  zerotvmRepo: SITES.zerotvm.githubRepo!,
+  zerotvmChat: `${SITES.zerotvm.url}/zero-tvm.html`,
+  zerotvmDocs: `${SITES.zerotvm.url}/docs.html`,
+  zerotvmArchitecture: `${SITES.zerotvm.url}/architecture.html`,
+  zerotvmDispatchViz: `${SITES.zerotvm.url}/demo.html`,
+  zerotvmWebllmBench: `${SITES.zerotvm.url}/webllm-bench.html`,
+  zerotvmCompilerChat: `${SITES.zerotvm.url}/compiler-chat.html`,
+  zerotvmShaderDump: `${SITES.zerotvm.url}/dump.html`,
+  zerotvmShaderSource: `${SITES.zerotvm.url}/shaders.html`,
+  zerotvmValidate: `${SITES.zerotvm.url}/validate.html`,
 
-  // WebGPU-DNA — radiobiology Monte Carlo, same fusion pattern
-  webgpuDnaSite: "https://webgpu-dna.vercel.app",
-  webgpuDnaRepo: "https://github.com/abgnydn/webgpu-dna",
+  // WebGPU-DNA
+  webgpuDnaSite: SITES.webgpudna.url,
+  webgpuDnaRepo: SITES.webgpudna.githubRepo!,
+
+  // Neuropulse
+  neuropulseSite: SITES.neuropulse.url,
+  neuropulseRepo: SITES.neuropulse.githubRepo!,
 } as const;
 
 export const STATS = {
