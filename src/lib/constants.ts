@@ -44,12 +44,23 @@ export const STATS = {
   tritonOverPytorch: "27",
   browserOverhead: "1.92",
   fusionAblation: "2.18",
-  // Real-world numbers (592 devices, 7 GPU vendors)
-  appleAvgSpeedup: "2865",
-  adrenoAvgSpeedup: "623",
-  nvidiaAvgSpeedup: "79",
-  armAvgSpeedup: "56",
-  totalRuns: "592",
+  // Real-world numbers — medians from gpubench DB snapshot 2026-05-04.
+  // Means are not used because Safari-on-macOS produces measurement
+  // artifacts on the unfused baseline (peaks like 79,021× are real
+  // numbers but describe Safari's WebGPU stalling, not Apple Silicon
+  // performance). Medians filter those out cleanly without an explicit
+  // outlier rule, and stay stable as the DB grows.
+  // 92 unique devices, 7 GPU vendors, 890 total runs.
+  appleMedianSpeedup: "71",
+  adrenoMedianSpeedup: "20",
+  nvidiaMedianSpeedup: "56",
+  armMedianSpeedup: "55",
+  applePeakSpeedup: "226",
+  nvidiaPeakSpeedup: "402",
+  adrenoPeakSpeedup: "103",
+  totalDevices: "92",
+  totalRuns: "890",
+  vendorCount: "7",
   mobileTokensPerSecAvg: "15000",
   mobileTokensPerSecPeak: "213000",
 } as const;

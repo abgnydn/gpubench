@@ -143,19 +143,25 @@ export async function GET(request: Request) {
     const totalResult = await sql`SELECT COUNT(*) as count FROM transformer_runs`;
     const total = Number(totalResult.rows[0]?.["count"] ?? 0);
 
+    // Aggregate via MEDIAN (not mean) and filter Safari measurement
+    // artifacts (speedups > 1000× come from the unfused baseline stalling
+    // on Safari's WebGPU, not actual device performance — they are real
+    // numbers that describe the wrong thing). Field name `avgSpeedup`
+    // kept for API back-compat but values are now medians.
     const topGpus = await sql`
-      SELECT gpu_name, COUNT(*) as runs, ROUND(AVG(speedup_parallel)::numeric, 1) as avg_speedup
-      FROM transformer_runs WHERE speedup_parallel IS NOT NULL
+      SELECT gpu_name, COUNT(*) as runs,
+             ROUND(percentile_cont(0.5) WITHIN GROUP (ORDER BY speedup_parallel)::numeric, 1) as avg_speedup
+      FROM transformer_runs WHERE speedup_parallel BETWEEN 1 AND 1000
       GROUP BY gpu_name ORDER BY avg_speedup DESC LIMIT 10
     `;
 
     const allRows = await sql`
       SELECT gpu_name, gpu_vendor, speedup_parallel, tokens_per_sec, is_mobile, browser
       FROM transformer_runs
-      WHERE speedup_parallel IS NOT NULL
+      WHERE speedup_parallel BETWEEN 1 AND 1000
     `;
 
-    const byVendor: Record<string, { total: number; sum: number; peak: number }> = {};
+    const byVendor: Record<string, { speedups: number[]; peak: number }> = {};
     let mobileCount = 0;
     let tpsSum = 0;
     let tpsCount = 0;
@@ -169,9 +175,8 @@ export async function GET(request: Request) {
         String(row["gpu_name"] ?? ""),
         String(row["gpu_vendor"] ?? ""),
       );
-      if (!byVendor[bucket]) byVendor[bucket] = { total: 0, sum: 0, peak: 0 };
-      byVendor[bucket].total++;
-      byVendor[bucket].sum += speedup;
+      if (!byVendor[bucket]) byVendor[bucket] = { speedups: [], peak: 0 };
+      byVendor[bucket].speedups.push(speedup);
       if (speedup > byVendor[bucket].peak) byVendor[bucket].peak = speedup;
       if (row["is_mobile"] === true) mobileCount++;
       if (Number.isFinite(tps) && tps > 0) {
@@ -183,11 +188,20 @@ export async function GET(request: Request) {
       browserCounts[browser] = (browserCounts[browser] ?? 0) + 1;
     }
 
+    function median(xs: number[]): number {
+      if (xs.length === 0) return 0;
+      const sorted = [...xs].sort((a, b) => a - b);
+      const mid = sorted.length >> 1;
+      return sorted.length % 2 === 0
+        ? (sorted[mid - 1]! + sorted[mid]!) / 2
+        : sorted[mid]!;
+    }
+
     const vendorAggregates = Object.entries(byVendor)
       .map(([name, v]) => ({
         name,
-        runs: v.total,
-        avgSpeedup: Math.round(v.sum / Math.max(v.total, 1)),
+        runs: v.speedups.length,
+        avgSpeedup: Math.round(median(v.speedups)),  // field name kept for back-compat; values are medians
         peakSpeedup: Math.round(v.peak),
       }))
       .sort((a, b) => b.avgSpeedup - a.avgSpeedup);

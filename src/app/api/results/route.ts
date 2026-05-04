@@ -156,20 +156,26 @@ export async function GET(request: Request) {
     const totalResult = await sql`SELECT COUNT(*) as count FROM benchmark_runs`;
     const total = Number(totalResult.rows[0]?.["count"] ?? 0);
 
+    // Aggregations use MEDIAN (percentile_cont 0.5), not mean.
+    // Means in this dataset are right-skewed by a long tail of high-end devices
+    // (e.g., Acrobot mean 105 vs median 40 — 2.6× skew). Medians describe the
+    // typical device experience. JSON field names retain the `avg_` prefix
+    // for back-compat with the frontend; rename pending.
     const avgResult = await sql`
       SELECT
-        ROUND(AVG(rastrigin_gps)::numeric, 1) as avg_rastrigin,
-        ROUND(AVG(nbody_gps)::numeric, 1) as avg_nbody,
-        ROUND(AVG(acrobot_gps)::numeric, 1) as avg_acrobot,
-        ROUND(AVG(mountaincar_gps)::numeric, 1) as avg_mountaincar,
-        ROUND(AVG(cartpole_gps)::numeric, 1) as avg_cartpole,
-        ROUND(AVG(montecarlo_gps)::numeric, 1) as avg_montecarlo,
-        ROUND(AVG(score)::numeric, 0) as avg_score
+        ROUND(percentile_cont(0.5) WITHIN GROUP (ORDER BY rastrigin_gps)::numeric, 1) as avg_rastrigin,
+        ROUND(percentile_cont(0.5) WITHIN GROUP (ORDER BY nbody_gps)::numeric, 1) as avg_nbody,
+        ROUND(percentile_cont(0.5) WITHIN GROUP (ORDER BY acrobot_gps)::numeric, 1) as avg_acrobot,
+        ROUND(percentile_cont(0.5) WITHIN GROUP (ORDER BY mountaincar_gps)::numeric, 1) as avg_mountaincar,
+        ROUND(percentile_cont(0.5) WITHIN GROUP (ORDER BY cartpole_gps)::numeric, 1) as avg_cartpole,
+        ROUND(percentile_cont(0.5) WITHIN GROUP (ORDER BY montecarlo_gps)::numeric, 1) as avg_montecarlo,
+        ROUND(percentile_cont(0.5) WITHIN GROUP (ORDER BY score)::numeric, 0) as avg_score
       FROM benchmark_runs
     `;
 
     const topGpus = await sql`
-      SELECT gpu_name, gpu_vendor, gpu_arch, COUNT(*) as runs, ROUND(AVG(score)::numeric, 0) as avg_score
+      SELECT gpu_name, gpu_vendor, gpu_arch, COUNT(*) as runs,
+             ROUND(percentile_cont(0.5) WITHIN GROUP (ORDER BY score)::numeric, 0) as avg_score
       FROM benchmark_runs
       GROUP BY gpu_name, gpu_vendor, gpu_arch
       ORDER BY avg_score DESC

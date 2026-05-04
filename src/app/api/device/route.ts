@@ -152,11 +152,12 @@ export async function GET(request: Request) {
     const uniqueDevices = await sql`SELECT COUNT(DISTINCT device_id) as count FROM device_sessions`;
     const devices = Number(uniqueDevices.rows[0]?.["count"] ?? 0);
 
+    // Median, not mean — keeps `avg_speed` field name for back-compat.
     const byWorkload = await sql`
       SELECT workload, COUNT(*) as reports,
              COUNT(DISTINCT device_id) as devices,
              ROUND(MAX(fitness)::numeric, 4) as peak_fitness,
-             ROUND(AVG(speed)::numeric, 1) as avg_speed,
+             ROUND(percentile_cont(0.5) WITHIN GROUP (ORDER BY speed)::numeric, 1) as avg_speed,
              MAX(gen) as max_gen
       FROM device_sessions
       GROUP BY workload

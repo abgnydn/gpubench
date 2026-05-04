@@ -13,7 +13,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "/" },
   title: "WebGPU Bench — How fast is your GPU in the browser?",
   description:
-    "Run real WebGPU compute benchmarks. 592 devices tested — kernel fusion averages 2,865x on Apple Silicon, 623x on phones. No install — just click Run.",
+    "Run real WebGPU compute benchmarks. 92 devices tested across 7 GPU vendors — kernel fusion median 71× on Apple Silicon, 56× on NVIDIA, 20× on phones. No install — just click Run.",
   keywords: [
     "WebGPU",
     "benchmark",
@@ -26,16 +26,16 @@ export const metadata: Metadata = {
   openGraph: {
     title: "WebGPU Bench — How fast is your GPU in the browser?",
     description:
-      "592 devices tested. Kernel fusion: 2,865x on Apple Silicon, 623x on phones. Test yours — no install required.",
+      "92 devices tested across 7 GPU vendors. Kernel fusion median: 71× on Apple Silicon, 56× on NVIDIA, 20× on phones. Test yours — no install required.",
     type: "website",
     url: "https://gpubench.dev",
     siteName: "WebGPU Bench",
-    images: [{ url: "/og.png", width: 1200, height: 630, alt: "WebGPU Bench — 2,865x Apple Silicon, 623x phones, 592 devices" }],
+    images: [{ url: "/og.png", width: 1200, height: 630, alt: "WebGPU Bench — 71× median Apple Silicon, 56× NVIDIA, 20× phones, 92 devices" }],
   },
   twitter: {
     card: "summary_large_image",
     title: "WebGPU Bench — How fast is your GPU in the browser?",
-    description: "592 devices tested. Kernel fusion: 2,865x on Apple Silicon, 623x on phones. No install required.",
+    description: "92 devices tested across 7 GPU vendors. Kernel fusion median: 71× Apple, 56× NVIDIA, 20× phones. No install required.",
     images: ["/og.png"],
   },
 };
@@ -50,7 +50,7 @@ const jsonLd = {
       "url": "https://gpubench.dev",
       "applicationCategory": "DeveloperApplication",
       "operatingSystem": "Any (WebGPU browser)",
-      "description": "Open WebGPU compute benchmarks. 592 devices tested — Rastrigin, N-body, Monte Carlo Pi, RL environments.",
+      "description": "Open WebGPU compute benchmarks. 92 devices tested across 7 GPU vendors — Rastrigin, N-body, Monte Carlo Pi, RL environments.",
       "author": { "@id": "https://gpubench.dev#author" },
       "isPartOf": {
         "@type": "CreativeWork",
