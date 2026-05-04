@@ -8,7 +8,7 @@ Real WebGPU compute benchmarks running on your hardware. No install, no account 
 
 ## Benchmarks
 
-5 standard, universally recognized compute workloads:
+6 standard, universally recognized compute workloads:
 
 | Benchmark | Type | Description |
 |---|---|---|
@@ -16,6 +16,7 @@ Real WebGPU compute benchmarks running on your hardware. No install, no account 
 | **N-Body Simulation** | Sequential | Gravitational physics, 512 bodies, 200 fused timesteps |
 | **Acrobot-v1** | Sequential | Standard Gym RL, double pendulum, 500 steps with RK4 |
 | **MountainCar-v0** | Sequential | Standard Gym RL, 200 timesteps |
+| **CartPole-v1** | Sequential | Standard Gym RL, inverted pendulum, 500 steps, 4→8→2 NN policy |
 | **Monte Carlo Pi** | Parallel | Classic estimation, 100K samples per worker |
 
 All benchmarks run as real WGSL compute shaders dispatched via the WebGPU API. Sequential benchmarks fuse all timesteps into a single GPU dispatch — the core technique from our [research preprint](https://doi.org/10.5281/zenodo.19342888).

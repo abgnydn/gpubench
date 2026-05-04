@@ -268,3 +268,93 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
   output[idx] = 4.0 * f32(inside) / f32(samples);
 }
 `;
+
+// ═══════════════════════════════════════════
+// 6. CARTPOLE — Standard Gym RL, inverted pendulum (SEQUENTIAL)
+// 4-state cartpole physics + 4→8 ReLU →2 NN policy, 500 steps fused per individual
+// Genome layout (58 floats):
+//   [0..32) hidden weights (8 hidden × 4 inputs, h*4+i)
+//   [32..40) hidden biases (8)
+//   [40..56) output weights (2 outputs × 8 hidden, o*8+h)
+//   [56..58) output biases (2)
+// ═══════════════════════════════════════════
+export const CARTPOLE_SHADER = /* wgsl */ `
+@group(0) @binding(0) var<storage, read> genomes: array<f32>;
+@group(0) @binding(1) var<storage, read_write> output: array<f32>;
+@group(0) @binding(2) var<uniform> params: vec3<u32>; // [pop, genomeSize, timesteps]
+
+const GRAVITY: f32 = 9.8;
+const POLE_MASS: f32 = 0.1;
+const TOTAL_MASS: f32 = 1.1;          // cart (1.0) + pole (0.1)
+const POLE_HALF_LEN: f32 = 0.5;
+const FORCE_MAG: f32 = 10.0;
+const TAU: f32 = 0.02;                // physics timestep
+const X_THRESHOLD: f32 = 2.4;
+const THETA_THRESHOLD: f32 = 0.2095;  // ~12 degrees
+
+fn nn_forward(g_base: u32, x: f32, x_dot: f32, theta: f32, theta_dot: f32) -> u32 {
+  // 4 inputs -> 8 hidden (ReLU)
+  var hidden: array<f32, 8>;
+  let inputs = array<f32, 4>(x, x_dot, theta, theta_dot);
+  for (var h: u32 = 0u; h < 8u; h = h + 1u) {
+    var sum: f32 = genomes[g_base + 32u + h]; // bias
+    for (var i: u32 = 0u; i < 4u; i = i + 1u) {
+      sum = sum + inputs[i] * genomes[g_base + h * 4u + i];
+    }
+    hidden[h] = max(0.0, sum); // ReLU
+  }
+  // 8 hidden -> 2 outputs (argmax)
+  var out0: f32 = genomes[g_base + 56u];
+  var out1: f32 = genomes[g_base + 57u];
+  for (var h: u32 = 0u; h < 8u; h = h + 1u) {
+    out0 = out0 + hidden[h] * genomes[g_base + 40u + h];
+    out1 = out1 + hidden[h] * genomes[g_base + 48u + h];
+  }
+  if (out0 > out1) { return 0u; }
+  return 1u;
+}
+
+@compute @workgroup_size(64)
+fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
+  let idx = gid.x;
+  let pop = params.x;
+  let gSize = params.y;
+  let steps = params.z;
+  if (idx >= pop) { return; }
+
+  let gBase = idx * gSize;
+  var x: f32 = 0.0;
+  var x_dot: f32 = 0.0;
+  var theta: f32 = 0.0;
+  var theta_dot: f32 = 0.0;
+  var reward: f32 = 0.0;
+  var alive: bool = true;
+
+  for (var t: u32 = 0u; t < steps; t = t + 1u) {
+    if (!alive) { break; }
+
+    let action = nn_forward(gBase, x, x_dot, theta, theta_dot);
+    let force = select(-FORCE_MAG, FORCE_MAG, action == 1u);
+    let cos_theta = cos(theta);
+    let sin_theta = sin(theta);
+
+    let temp = (force + POLE_MASS * POLE_HALF_LEN * theta_dot * theta_dot * sin_theta) / TOTAL_MASS;
+    let theta_acc = (GRAVITY * sin_theta - cos_theta * temp) /
+        (POLE_HALF_LEN * (4.0 / 3.0 - POLE_MASS * cos_theta * cos_theta / TOTAL_MASS));
+    let x_acc = temp - POLE_MASS * POLE_HALF_LEN * theta_acc * cos_theta / TOTAL_MASS;
+
+    // Euler integration
+    x = x + TAU * x_dot;
+    x_dot = x_dot + TAU * x_acc;
+    theta = theta + TAU * theta_dot;
+    theta_dot = theta_dot + TAU * theta_acc;
+
+    reward = reward + 1.0;
+    if (abs(x) > X_THRESHOLD || abs(theta) > THETA_THRESHOLD) {
+      alive = false;
+    }
+  }
+
+  output[idx] = -reward; // negate so "minimize" semantics align with the other RL benchmarks
+}
+`;

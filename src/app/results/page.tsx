@@ -17,6 +17,7 @@ interface ComputeRow {
   nbody_gps: number | null;
   acrobot_gps: number | null;
   mountaincar_gps: number | null;
+  cartpole_gps: number | null;
   montecarlo_gps: number | null;
   browser: string;
   os: string;
@@ -282,7 +283,7 @@ export default function ResultsPage() {
     if (tab === "compute") {
       const header = "GPU,Vendor,Score,Rastrigin,N-Body,Acrobot,MountainCar,MonteCarlo,Browser,OS,Mobile,Timestamp";
       const rows = filteredCompute.map((r) =>
-        [r.gpu_name, r.gpu_vendor, r.score, r.rastrigin_gps, r.nbody_gps, r.acrobot_gps, r.mountaincar_gps, r.montecarlo_gps, shortBrowser(r.browser), r.os, r.is_mobile, r.created_at]
+        [r.gpu_name, r.gpu_vendor, r.score, r.rastrigin_gps, r.nbody_gps, r.acrobot_gps, r.mountaincar_gps, r.cartpole_gps, r.montecarlo_gps, shortBrowser(r.browser), r.os, r.is_mobile, r.created_at]
           .map((v) => `"${v ?? ""}"`)
           .join(","),
       );
@@ -475,6 +476,7 @@ export default function ResultsPage() {
                     <SortHeader label="N-Body" field="nbody_gps" currentSort={sortField} currentDir={sortDir} onSort={handleSort} />
                     <SortHeader label="Acrobot" field="acrobot_gps" currentSort={sortField} currentDir={sortDir} onSort={handleSort} />
                     <SortHeader label="MtnCar" field="mountaincar_gps" currentSort={sortField} currentDir={sortDir} onSort={handleSort} />
+                    <SortHeader label="CartPole" field="cartpole_gps" currentSort={sortField} currentDir={sortDir} onSort={handleSort} />
                     <SortHeader label="MC Pi" field="montecarlo_gps" currentSort={sortField} currentDir={sortDir} onSort={handleSort} />
                     <th className="px-2 py-2 text-left text-[10px] uppercase tracking-wider text-bench-muted">Browser</th>
                     <th className="px-2 py-2 text-left text-[10px] uppercase tracking-wider text-bench-muted">OS</th>
@@ -497,6 +499,7 @@ export default function ResultsPage() {
                       <td className="px-2 py-1.5 tabular-nums text-bench-muted">{fmtNum(r.nbody_gps)}</td>
                       <td className="px-2 py-1.5 tabular-nums text-bench-muted">{fmtNum(r.acrobot_gps)}</td>
                       <td className="px-2 py-1.5 tabular-nums text-bench-muted">{fmtNum(r.mountaincar_gps)}</td>
+                      <td className="px-2 py-1.5 tabular-nums text-bench-muted">{fmtNum(r.cartpole_gps)}</td>
                       <td className="px-2 py-1.5 tabular-nums text-bench-muted">{fmtNum(r.montecarlo_gps)}</td>
                       <td className="px-2 py-1.5 text-bench-muted/60">{shortBrowser(r.browser)}</td>
                       <td className="px-2 py-1.5 text-bench-muted/60">{r.os}</td>

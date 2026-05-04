@@ -7,11 +7,31 @@ import { ResultsSummary } from "@/components/results-summary";
 import { RecentRuns } from "@/components/recent-runs";
 import type { GpuInfo } from "@/lib/gpu-detect";
 import type { BenchmarkResult } from "@/lib/benchmark-runner";
-import { LINKS } from "@/lib/constants";
+import { LINKS, SITES, CROSSLINKS, type SiteInfo } from "@/lib/constants";
 import { PaperCard } from "@/components/paper-card";
 import { TabSwitcher } from "@/components/tab-switcher";
 
 type BenchStatus = "idle" | "warmup" | "running" | "done";
+
+// Companion-project rendering is driven by sites-shared/sites.ts. The first
+// entry of CROSSLINKS.gpubench becomes the flagship hero; the rest fill the
+// grid below. Category → badge classes are listed here so Tailwind's JIT
+// picks them up (dynamic `text-${color}` strings don't get extracted).
+// CROSSLINKS.gpubench is guaranteed non-empty by sites.ts; non-null assertions
+// cover noUncheckedIndexedAccess. Widen to SiteInfo so optional fields
+// (stats, cta) behave as optional downstream.
+const COMPANION_FLAGSHIP: SiteInfo = SITES[CROSSLINKS.gpubench[0]!];
+const COMPANION_ADJACENT: SiteInfo[] = CROSSLINKS.gpubench.slice(1).map((k) => SITES[k]);
+const CATEGORY_BADGE: Record<string, string> = {
+  Theory: "bg-bench-accent/10 text-bench-accent",
+  Radiobiology: "bg-bench-green/10 text-bench-green",
+  "LLM inference": "bg-bench-yellow/10 text-bench-yellow",
+  Visualization: "bg-bench-red/10 text-bench-red",
+  Benchmarks: "bg-bench-accent/10 text-bench-accent",
+  Personal: "bg-bench-muted/10 text-bench-muted",
+  Utility: "bg-bench-muted/10 text-bench-muted",
+  Tooling: "bg-bench-muted/10 text-bench-muted",
+};
 
 interface BenchState {
   status: BenchStatus;
@@ -61,6 +81,16 @@ const BENCHMARKS = [
     benchmarkIterations: 50,
   },
   {
+    key: "cartpole",
+    name: "CartPole-v1",
+    description: "Standard Gym RL, inverted pendulum, 500 steps, 4\u21928\u21922 NN policy (SEQUENTIAL)",
+    icon: "\u{2696}\uFE0F",
+    populationSize: 4096,
+    dimensions: 58,
+    warmupIterations: 3,
+    benchmarkIterations: 30,
+  },
+  {
     key: "montecarlo",
     name: "Monte Carlo Pi",
     description: "Classic parallel estimation, 100K samples per worker (PARALLEL)",
@@ -82,6 +112,7 @@ export default function HomePage() {
     nbody: { status: "idle", progress: 0 },
     acrobot: { status: "idle", progress: 0 },
     mountaincar: { status: "idle", progress: 0 },
+    cartpole: { status: "idle", progress: 0 },
     montecarlo: { status: "idle", progress: 0 },
   });
 
@@ -115,7 +146,7 @@ export default function HomePage() {
 
     try {
       const { BenchmarkRunner } = await import("@/lib/benchmark-runner");
-      const { RASTRIGIN_SHADER, NBODY_SHADER, ACROBOT_SHADER, MOUNTAINCAR_SHADER, MONTECARLO_SHADER } = await import("@/lib/shaders");
+      const { RASTRIGIN_SHADER, NBODY_SHADER, ACROBOT_SHADER, MOUNTAINCAR_SHADER, CARTPOLE_SHADER, MONTECARLO_SHADER } = await import("@/lib/shaders");
 
       const runner = new BenchmarkRunner();
       await runner.init();
@@ -125,6 +156,7 @@ export default function HomePage() {
         nbody: NBODY_SHADER,
         acrobot: ACROBOT_SHADER,
         mountaincar: MOUNTAINCAR_SHADER,
+        cartpole: CARTPOLE_SHADER,
         montecarlo: MONTECARLO_SHADER,
       };
 
@@ -190,6 +222,7 @@ export default function HomePage() {
     const nbody = find("N-Body Simulation");
     const acrobot = find("Acrobot-v1");
     const mountaincar = find("MountainCar-v0");
+    const cartpole = find("CartPole-v1");
     const montecarlo = find("Monte Carlo Pi");
 
     const geoMean = Math.round(
@@ -229,6 +262,7 @@ export default function HomePage() {
         nbody: nbody?.throughput ?? null,
         acrobot: acrobot?.throughput ?? null,
         mountaincar: mountaincar?.throughput ?? null,
+        cartpole: cartpole?.throughput ?? null,
         montecarlo: montecarlo?.throughput ?? null,
         // Timing stats
         rastriginMean: rastrigin?.meanTime ?? null,
@@ -247,6 +281,10 @@ export default function HomePage() {
         mountaincarMin: mountaincar?.minTime ?? null,
         mountaincarMax: mountaincar?.maxTime ?? null,
         mountaincarStd: mountaincar?.stdDev ?? null,
+        cartpoleMean: cartpole?.meanTime ?? null,
+        cartpoleMin: cartpole?.minTime ?? null,
+        cartpoleMax: cartpole?.maxTime ?? null,
+        cartpoleStd: cartpole?.stdDev ?? null,
         montecarloMean: montecarlo?.meanTime ?? null,
         montecarloMin: montecarlo?.minTime ?? null,
         montecarloMax: montecarlo?.maxTime ?? null,
@@ -398,29 +436,61 @@ export default function HomePage() {
             <div className="flex-1 h-px bg-bench-border" />
           </div>
           <p className="text-xs text-bench-muted leading-relaxed mb-4 text-center max-w-md mx-auto">
-            These benchmarks measure the raw fusion pattern. Two projects apply it end-to-end.
+            These benchmarks measure the raw fusion pattern. The research line and three end-to-end
+            projects that build on it:
           </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <a href={LINKS.zerotvmSite} target="_blank" rel="noopener" className="card block transition hover:border-bench-accent/30">
-              <span className="text-[10px] font-medium uppercase tracking-wider px-2 py-0.5 rounded-full bg-bench-accent/10 text-bench-accent mb-2 inline-block">
-                LLM inference
+
+          {/* Flagship hero — first entry of CROSSLINKS.gpubench (kernelfusion) */}
+          <a
+            href={COMPANION_FLAGSHIP.url}
+            target="_blank"
+            rel="noopener"
+            className="card block transition hover:border-bench-accent/50 ring-1 ring-bench-accent/20 mb-3"
+          >
+            <div className="flex items-start gap-3 mb-2">
+              <span className={`text-[10px] font-medium uppercase tracking-wider px-2 py-0.5 rounded-full inline-block ${CATEGORY_BADGE[COMPANION_FLAGSHIP.category] ?? "bg-bench-accent/10 text-bench-accent"}`}>
+                {COMPANION_FLAGSHIP.category}
               </span>
-              <h3 className="font-semibold text-bench-text text-sm mb-1">zerotvm.com</h3>
-              <p className="text-xs text-bench-muted leading-relaxed mb-2">
-                Phi-3 Mini (3.8B) in the browser via 10 kernel roles across 27 WGSL files — ~2k lines of TypeScript, no compiler, no WASM. ~40 tok/s on M2 Pro.
-              </p>
-              <span className="text-xs font-medium text-bench-accent">Run it live &rarr;</span>
-            </a>
-            <a href={LINKS.webgpuDnaSite} target="_blank" rel="noopener" className="card block transition hover:border-bench-accent/30">
-              <span className="text-[10px] font-medium uppercase tracking-wider px-2 py-0.5 rounded-full bg-bench-accent/10 text-bench-accent mb-2 inline-block">
-                Radiobiology
+              <span className="text-[10px] font-medium uppercase tracking-wider px-2 py-0.5 rounded-full bg-bench-accent/10 text-bench-accent inline-block">
+                Research line
               </span>
-              <h3 className="font-semibold text-bench-text text-sm mb-1">webgpu-dna.vercel.app</h3>
-              <p className="text-xs text-bench-muted leading-relaxed mb-2">
-                Geant4-DNA electron track-structure Monte Carlo in the browser. One fused dispatch, one thread per primary, full history inline.
-              </p>
-              <span className="text-xs font-medium text-bench-accent">See the simulation &rarr;</span>
-            </a>
+            </div>
+            <h3 className="font-semibold text-bench-text text-base mb-1">{COMPANION_FLAGSHIP.domain}</h3>
+            <p className="text-xs text-bench-muted leading-relaxed mb-3">{COMPANION_FLAGSHIP.shortDesc}</p>
+            {COMPANION_FLAGSHIP.stats && (
+              <div className="grid grid-cols-3 gap-2 mb-3">
+                {COMPANION_FLAGSHIP.stats.map((s) => (
+                  <div key={s.label} className="bg-bench-bg/40 rounded px-2 py-1.5">
+                    <div className="text-sm font-semibold text-bench-text">{s.value}</div>
+                    <div className="text-[10px] text-bench-muted">{s.label}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+            <span className="text-xs font-medium text-bench-accent">{COMPANION_FLAGSHIP.cta ?? "Visit site \u2192"}</span>
+          </a>
+
+          {/* Adjacent siblings */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {COMPANION_ADJACENT.map((site) => {
+              const badge = CATEGORY_BADGE[site.category] ?? "bg-bench-accent/10 text-bench-accent";
+              return (
+                <a
+                  key={site.key}
+                  href={site.url}
+                  target="_blank"
+                  rel="noopener"
+                  className="card block transition hover:border-bench-accent/30"
+                >
+                  <span className={`text-[10px] font-medium uppercase tracking-wider px-2 py-0.5 rounded-full mb-2 inline-block ${badge}`}>
+                    {site.category}
+                  </span>
+                  <h3 className="font-semibold text-bench-text text-sm mb-1">{site.domain}</h3>
+                  <p className="text-xs text-bench-muted leading-relaxed mb-2">{site.shortDesc}</p>
+                  <span className="text-xs font-medium text-bench-accent">{site.cta ?? "Visit \u2192"}</span>
+                </a>
+              );
+            })}
           </div>
         </div>
       </main>
@@ -439,9 +509,10 @@ export default function HomePage() {
             <div className="flex items-center gap-5 text-sm text-bench-muted flex-wrap justify-center">
               <a href="/results" className="hover:text-bench-text transition">All Results</a>
               <a href="/why" className="hover:text-bench-text transition">Why this matters</a>
-              <a href={LINKS.research} className="hover:text-bench-text transition">kernelfusion.dev</a>
-              <a href={LINKS.zerotvmSite} target="_blank" rel="noopener" className="hover:text-bench-text transition">zerotvm.com</a>
-              <a href={LINKS.webgpuDnaSite} target="_blank" rel="noopener" className="hover:text-bench-text transition">webgpu-dna</a>
+              <a href={SITES.kernelfusion.url} className="hover:text-bench-text transition">{SITES.kernelfusion.domain}</a>
+              <a href={SITES.webgpudna.url} target="_blank" rel="noopener" className="hover:text-bench-text transition">{SITES.webgpudna.domain}</a>
+              <a href={SITES.zerotvm.url} target="_blank" rel="noopener" className="hover:text-bench-text transition">{SITES.zerotvm.domain}</a>
+              <a href={SITES.neuropulse.url} target="_blank" rel="noopener" className="hover:text-bench-text transition">{SITES.neuropulse.domain}</a>
               <a href={LINKS.repo} className="hover:text-bench-text transition">GitHub</a>
               <a href="/privacy" className="hover:text-bench-text transition">Privacy</a>
               <span>MIT License</span>

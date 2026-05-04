@@ -74,13 +74,14 @@ export async function POST(request: Request) {
       INSERT INTO benchmark_runs (
         id, gpu_name, gpu_vendor, gpu_arch, max_buffer, features, browser, os,
         parallel_gps, sequential_gps, matrix_gps, score,
-        rastrigin_gps, nbody_gps, acrobot_gps, mountaincar_gps, montecarlo_gps,
+        rastrigin_gps, nbody_gps, acrobot_gps, mountaincar_gps, cartpole_gps, montecarlo_gps,
         max_workgroup_x, max_workgroup_y, max_workgroup_z, max_invocations,
         backend, device_pixel_ratio, screen_width, screen_height, is_mobile,
         rastrigin_mean, rastrigin_min, rastrigin_max, rastrigin_std,
         nbody_mean, nbody_min, nbody_max, nbody_std,
         acrobot_mean, acrobot_min, acrobot_max, acrobot_std,
         mountaincar_mean, mountaincar_min, mountaincar_max, mountaincar_std,
+        cartpole_mean, cartpole_min, cartpole_max, cartpole_std,
         montecarlo_mean, montecarlo_min, montecarlo_max, montecarlo_std
       ) VALUES (
         ${id}, ${gpuName}, ${gpuVendor}, ${gpuArch},
@@ -88,7 +89,7 @@ export async function POST(request: Request) {
         ${browser}, ${os},
         ${num(body["parallel"])}, ${num(body["sequential"])}, ${num(body["matrix"])}, ${score},
         ${num(body["rastrigin"])}, ${num(body["nbody"])}, ${num(body["acrobot"])},
-        ${num(body["mountaincar"])}, ${num(body["montecarlo"])},
+        ${num(body["mountaincar"])}, ${num(body["cartpole"])}, ${num(body["montecarlo"])},
         ${num(body["maxWorkgroupX"]) ?? 0}, ${num(body["maxWorkgroupY"]) ?? 0},
         ${num(body["maxWorkgroupZ"]) ?? 0}, ${num(body["maxInvocations"]) ?? 0},
         ${str(body["backend"])}, ${num(body["devicePixelRatio"]) ?? 1},
@@ -98,6 +99,7 @@ export async function POST(request: Request) {
         ${num(body["nbodyMean"])}, ${num(body["nbodyMin"])}, ${num(body["nbodyMax"])}, ${num(body["nbodyStd"])},
         ${num(body["acrobotMean"])}, ${num(body["acrobotMin"])}, ${num(body["acrobotMax"])}, ${num(body["acrobotStd"])},
         ${num(body["mountaincarMean"])}, ${num(body["mountaincarMin"])}, ${num(body["mountaincarMax"])}, ${num(body["mountaincarStd"])},
+        ${num(body["cartpoleMean"])}, ${num(body["cartpoleMin"])}, ${num(body["cartpoleMax"])}, ${num(body["cartpoleStd"])},
         ${num(body["montecarloMean"])}, ${num(body["montecarloMin"])}, ${num(body["montecarloMax"])}, ${num(body["montecarloStd"])}
       )
     `;
@@ -121,7 +123,7 @@ export async function GET(request: Request) {
 
       const ALLOWED_SORT = new Set([
         "created_at", "score", "gpu_name", "gpu_vendor",
-        "rastrigin_gps", "nbody_gps", "acrobot_gps", "mountaincar_gps", "montecarlo_gps",
+        "rastrigin_gps", "nbody_gps", "acrobot_gps", "mountaincar_gps", "cartpole_gps", "montecarlo_gps",
       ]);
       const sortParam = searchParams.get("sort") ?? "created_at";
       const sortCol = ALLOWED_SORT.has(sortParam) ? sortParam : "created_at";
@@ -132,7 +134,7 @@ export async function GET(request: Request) {
 
       const rows = await sql.query(
         `SELECT gpu_name, gpu_vendor, gpu_arch, score,
-                rastrigin_gps, nbody_gps, acrobot_gps, mountaincar_gps, montecarlo_gps,
+                rastrigin_gps, nbody_gps, acrobot_gps, mountaincar_gps, cartpole_gps, montecarlo_gps,
                 browser, os, is_mobile, created_at
          FROM benchmark_runs
          ORDER BY ${sortCol} ${sortDir} NULLS LAST
@@ -160,6 +162,7 @@ export async function GET(request: Request) {
         ROUND(AVG(nbody_gps)::numeric, 1) as avg_nbody,
         ROUND(AVG(acrobot_gps)::numeric, 1) as avg_acrobot,
         ROUND(AVG(mountaincar_gps)::numeric, 1) as avg_mountaincar,
+        ROUND(AVG(cartpole_gps)::numeric, 1) as avg_cartpole,
         ROUND(AVG(montecarlo_gps)::numeric, 1) as avg_montecarlo,
         ROUND(AVG(score)::numeric, 0) as avg_score
       FROM benchmark_runs
