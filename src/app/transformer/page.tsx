@@ -6,6 +6,7 @@ import type { GpuInfo } from "@/lib/gpu-detect";
 import { LINKS } from "@/lib/constants";
 import { PaperCard } from "@/components/paper-card";
 import { TabSwitcher } from "@/components/tab-switcher";
+import { CompanionProjects } from "@/components/companion-projects";
 
 interface BenchResult {
   label: string;
@@ -285,6 +286,8 @@ export default function TransformerPage() {
           doi={LINKS.transformerDoi}
           doiLabel={LINKS.transformerDoiShort}
         />
+
+        <CompanionProjects />
       </main>
 
       {/* Footer */}

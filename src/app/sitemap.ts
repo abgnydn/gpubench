@@ -10,7 +10,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${BASE}/why`, lastModified: now, changeFrequency: "monthly", priority: 0.7 },
     { url: `${BASE}/transformer`, lastModified: now, changeFrequency: "monthly", priority: 0.7 },
     { url: `${BASE}/swarm`, lastModified: now, changeFrequency: "monthly", priority: 0.7 },
-    { url: `${BASE}/zerotvm`, lastModified: now, changeFrequency: "monthly", priority: 0.7 },
     { url: `${BASE}/privacy`, lastModified: now, changeFrequency: "yearly", priority: 0.3 },
   ];
 }

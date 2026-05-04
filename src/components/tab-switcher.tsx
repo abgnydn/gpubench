@@ -13,7 +13,6 @@ const TABS = [
   { label: "GPU Compute", href: "/" },
   { label: "Transformer Fusion", href: "/transformer" },
   { label: "Distributed P2P", href: "/swarm" },
-  { label: "Zero-TVM", href: "/zerotvm" },
   { label: "All Results", href: "/results" },
 ] as const;
 

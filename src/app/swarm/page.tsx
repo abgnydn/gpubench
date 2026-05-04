@@ -1,6 +1,7 @@
 "use client";
 
 import { TabSwitcher } from "@/components/tab-switcher";
+import { CompanionProjects } from "@/components/companion-projects";
 
 const DEMOS = [
   {
@@ -259,6 +260,8 @@ export default function SwarmPage() {
             </a>
           </div>
         </div>
+
+        <CompanionProjects />
 
         {/* Footer */}
         <div className="text-center pt-8">

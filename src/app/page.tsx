@@ -7,31 +7,12 @@ import { ResultsSummary } from "@/components/results-summary";
 import { RecentRuns } from "@/components/recent-runs";
 import type { GpuInfo } from "@/lib/gpu-detect";
 import type { BenchmarkResult } from "@/lib/benchmark-runner";
-import { LINKS, SITES, CROSSLINKS, type SiteInfo } from "@/lib/constants";
+import { LINKS, SITES } from "@/lib/constants";
 import { PaperCard } from "@/components/paper-card";
 import { TabSwitcher } from "@/components/tab-switcher";
+import { CompanionProjects } from "@/components/companion-projects";
 
 type BenchStatus = "idle" | "warmup" | "running" | "done";
-
-// Companion-project rendering is driven by sites-shared/sites.ts. The first
-// entry of CROSSLINKS.gpubench becomes the flagship hero; the rest fill the
-// grid below. Category → badge classes are listed here so Tailwind's JIT
-// picks them up (dynamic `text-${color}` strings don't get extracted).
-// CROSSLINKS.gpubench is guaranteed non-empty by sites.ts; non-null assertions
-// cover noUncheckedIndexedAccess. Widen to SiteInfo so optional fields
-// (stats, cta) behave as optional downstream.
-const COMPANION_FLAGSHIP: SiteInfo = SITES[CROSSLINKS.gpubench[0]!];
-const COMPANION_ADJACENT: SiteInfo[] = CROSSLINKS.gpubench.slice(1).map((k) => SITES[k]);
-const CATEGORY_BADGE: Record<string, string> = {
-  Theory: "bg-bench-accent/10 text-bench-accent",
-  Radiobiology: "bg-bench-green/10 text-bench-green",
-  "LLM inference": "bg-bench-yellow/10 text-bench-yellow",
-  Visualization: "bg-bench-red/10 text-bench-red",
-  Benchmarks: "bg-bench-accent/10 text-bench-accent",
-  Personal: "bg-bench-muted/10 text-bench-muted",
-  Utility: "bg-bench-muted/10 text-bench-muted",
-  Tooling: "bg-bench-muted/10 text-bench-muted",
-};
 
 interface BenchState {
   status: BenchStatus;
@@ -428,71 +409,7 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Companion projects */}
-        <div className="pt-4">
-          <div className="flex items-center gap-4 mb-4">
-            <div className="flex-1 h-px bg-bench-border" />
-            <span className="text-xs text-bench-muted font-medium uppercase tracking-widest">Companion projects</span>
-            <div className="flex-1 h-px bg-bench-border" />
-          </div>
-          <p className="text-xs text-bench-muted leading-relaxed mb-4 text-center max-w-md mx-auto">
-            These benchmarks measure the raw fusion pattern. The research line and three end-to-end
-            projects that build on it:
-          </p>
-
-          {/* Flagship hero — first entry of CROSSLINKS.gpubench (kernelfusion) */}
-          <a
-            href={COMPANION_FLAGSHIP.url}
-            target="_blank"
-            rel="noopener"
-            className="card block transition hover:border-bench-accent/50 ring-1 ring-bench-accent/20 mb-3"
-          >
-            <div className="flex items-start gap-3 mb-2">
-              <span className={`text-[10px] font-medium uppercase tracking-wider px-2 py-0.5 rounded-full inline-block ${CATEGORY_BADGE[COMPANION_FLAGSHIP.category] ?? "bg-bench-accent/10 text-bench-accent"}`}>
-                {COMPANION_FLAGSHIP.category}
-              </span>
-              <span className="text-[10px] font-medium uppercase tracking-wider px-2 py-0.5 rounded-full bg-bench-accent/10 text-bench-accent inline-block">
-                Research line
-              </span>
-            </div>
-            <h3 className="font-semibold text-bench-text text-base mb-1">{COMPANION_FLAGSHIP.domain}</h3>
-            <p className="text-xs text-bench-muted leading-relaxed mb-3">{COMPANION_FLAGSHIP.shortDesc}</p>
-            {COMPANION_FLAGSHIP.stats && (
-              <div className="grid grid-cols-3 gap-2 mb-3">
-                {COMPANION_FLAGSHIP.stats.map((s) => (
-                  <div key={s.label} className="bg-bench-bg/40 rounded px-2 py-1.5">
-                    <div className="text-sm font-semibold text-bench-text">{s.value}</div>
-                    <div className="text-[10px] text-bench-muted">{s.label}</div>
-                  </div>
-                ))}
-              </div>
-            )}
-            <span className="text-xs font-medium text-bench-accent">{COMPANION_FLAGSHIP.cta ?? "Visit site \u2192"}</span>
-          </a>
-
-          {/* Adjacent siblings */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            {COMPANION_ADJACENT.map((site) => {
-              const badge = CATEGORY_BADGE[site.category] ?? "bg-bench-accent/10 text-bench-accent";
-              return (
-                <a
-                  key={site.key}
-                  href={site.url}
-                  target="_blank"
-                  rel="noopener"
-                  className="card block transition hover:border-bench-accent/30"
-                >
-                  <span className={`text-[10px] font-medium uppercase tracking-wider px-2 py-0.5 rounded-full mb-2 inline-block ${badge}`}>
-                    {site.category}
-                  </span>
-                  <h3 className="font-semibold text-bench-text text-sm mb-1">{site.domain}</h3>
-                  <p className="text-xs text-bench-muted leading-relaxed mb-2">{site.shortDesc}</p>
-                  <span className="text-xs font-medium text-bench-accent">{site.cta ?? "Visit \u2192"}</span>
-                </a>
-              );
-            })}
-          </div>
-        </div>
+        <CompanionProjects />
       </main>
 
       {/* Footer */}

@@ -1,4 +1,5 @@
 import { LINKS } from "@/lib/constants";
+import { CompanionProjects } from "@/components/companion-projects";
 
 export default function PrivacyPage() {
   return (
@@ -151,6 +152,8 @@ export default function PrivacyPage() {
           </section>
 
         </div>
+
+        <CompanionProjects />
 
         {/* Footer */}
         <div className="mt-16 pt-8 border-t border-bench-border/50 flex items-center justify-between">

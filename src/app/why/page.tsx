@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { LINKS } from "@/lib/constants";
+import { CompanionProjects } from "@/components/companion-projects";
 
 export const metadata: Metadata = {
   title: "Why This Matters — WebGPU Bench",
@@ -242,6 +243,7 @@ export default function WhyPage() {
           </p>
         </section>
 
+        <CompanionProjects />
       </div>
 
       {/* Footer */}

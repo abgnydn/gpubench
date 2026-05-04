@@ -4,9 +4,10 @@ import { useEffect, useState, useMemo, useCallback } from "react";
 import { LINKS } from "@/lib/constants";
 import { ShareButtons } from "@/components/share-buttons";
 import { TabSwitcher } from "@/components/tab-switcher";
+import { CompanionProjects } from "@/components/companion-projects";
 
 type SortDir = "asc" | "desc";
-type Tab = "compute" | "transformer" | "demos" | "zerotvm";
+type Tab = "compute" | "transformer" | "demos";
 
 interface ComputeRow {
   gpu_name: string;
@@ -124,13 +125,6 @@ export default function ResultsPage() {
   const [demoTotal, setDemoTotal] = useState(0);
   const [demoPage, setDemoPage] = useState(1);
   const [demoPages, setDemoPages] = useState(1);
-  // Zero-TVM (LLM decode) is split out into its own tab — different
-  // units (tok/s vs gen/s) and a different narrative ("run an LLM on
-  // your GPU"), so mixing it into the P2P Demos table confused users.
-  const [zerotvmRows, setZerotvmRows] = useState<DeviceRow[]>([]);
-  const [zerotvmTotal, setZerotvmTotal] = useState(0);
-  const [zerotvmPage, setZerotvmPage] = useState(1);
-  const [zerotvmPages, setZerotvmPages] = useState(1);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [sortField, setSortField] = useState("created_at");
@@ -164,26 +158,13 @@ export default function ResultsPage() {
     try {
       const s = sort ?? sortField;
       const d = dir ?? sortDir;
-      // filter=p2p on the server excludes Zero-TVM rows — they live in
-      // their own tab below, so we don't want them leaking into the
-      // P2P evolution table (or its pagination counts).
+      // filter=p2p excludes the legacy Zero-TVM rows (the iframed mirror
+      // was retired) so the table reflects only live workloads.
       const res = await fetch(`/api/device?all=true&filter=p2p&page=${page}&sort=${s}&dir=${d}`);
       const json = await res.json();
       setDemoRows(json.rows ?? []);
       setDemoTotal(json.total ?? 0);
       setDemoPages(json.totalPages ?? 1);
-    } catch { /* */ }
-  }, [sortField, sortDir]);
-
-  const fetchZerotvm = useCallback(async (page: number, sort?: string, dir?: string) => {
-    try {
-      const s = sort ?? sortField;
-      const d = dir ?? sortDir;
-      const res = await fetch(`/api/device?all=true&filter=zerotvm&page=${page}&sort=${s}&dir=${d}`);
-      const json = await res.json();
-      setZerotvmRows(json.rows ?? []);
-      setZerotvmTotal(json.total ?? 0);
-      setZerotvmPages(json.totalPages ?? 1);
     } catch { /* */ }
   }, [sortField, sortDir]);
 
@@ -193,9 +174,8 @@ export default function ResultsPage() {
       fetchCompute(1),
       fetchTransformer(1),
       fetchDemos(1),
-      fetchZerotvm(1),
     ]).finally(() => setLoading(false));
-  }, [fetchCompute, fetchTransformer, fetchDemos, fetchZerotvm]);
+  }, [fetchCompute, fetchTransformer, fetchDemos]);
 
   const handleSort = (field: string) => {
     const newDir = sortField === field ? (sortDir === "asc" ? "desc" : "asc") : "desc";
@@ -204,7 +184,6 @@ export default function ResultsPage() {
     // Refetch current tab from server with new sort
     if (tab === "compute") fetchCompute(computePage, field, newDir);
     else if (tab === "transformer") fetchTransformer(transformerPage, field, newDir);
-    else if (tab === "zerotvm") fetchZerotvm(zerotvmPage, field, newDir);
     else fetchDemos(demoPage, field, newDir);
   };
 
@@ -249,19 +228,6 @@ export default function ResultsPage() {
       : demoRows;
   }, [demoRows, search]);
 
-  const filteredZerotvm = useMemo(() => {
-    const q = search.toLowerCase();
-    return q
-      ? zerotvmRows.filter(
-          (r) =>
-            r.gpu?.toLowerCase().includes(q) ||
-            r.device_name?.toLowerCase().includes(q) ||
-            r.browser?.toLowerCase().includes(q) ||
-            r.os?.toLowerCase().includes(q),
-        )
-      : zerotvmRows;
-  }, [zerotvmRows, search]);
-
   const handleComputePage = (p: number) => {
     setComputePage(p);
     fetchCompute(p);
@@ -273,10 +239,6 @@ export default function ResultsPage() {
   const handleDemoPage = (p: number) => {
     setDemoPage(p);
     fetchDemos(p);
-  };
-  const handleZerotvmPage = (p: number) => {
-    setZerotvmPage(p);
-    fetchZerotvm(p);
   };
 
   const csvExport = () => {
@@ -306,19 +268,6 @@ export default function ResultsPage() {
       a.href = url;
       a.download = "gpubench-transformer-results.csv";
       a.click();
-    } else if (tab === "zerotvm") {
-      const header = "Device,GPU,Workload,Tokens,Tokens_per_sec,Browser,OS,Mobile,Timestamp";
-      const rows = filteredZerotvm.map((r) =>
-        [r.device_name, r.gpu, r.workload, r.gen, r.speed, shortBrowser(r.browser), r.os, r.is_mobile, r.created_at]
-          .map((v) => `"${v ?? ""}"`)
-          .join(","),
-      );
-      const blob = new Blob([header + "\n" + rows.join("\n")], { type: "text/csv" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "gpubench-zerotvm-sessions.csv";
-      a.click();
     } else {
       const header = "Device,GPU,Workload,Fitness,Generation,Speed_gen_s,Browser,OS,Mobile,Timestamp";
       const rows = filteredDemos.map((r) =>
@@ -335,10 +284,7 @@ export default function ResultsPage() {
     }
   };
 
-  // demoTotal/zerotvmTotal come from two filtered queries on the same
-  // table, so they partition device_sessions — adding them gives the
-  // full device-sessions count without double-counting.
-  const allTotal = computeTotal + transformerTotal + demoTotal + zerotvmTotal;
+  const allTotal = computeTotal + transformerTotal + demoTotal;
   const shareText = `WebGPU Bench: ${allTotal} benchmark runs from real devices. Full dataset, sortable, filterable, downloadable as CSV.`;
 
   return (
@@ -370,11 +316,8 @@ export default function ResultsPage() {
           </p>
         </header>
 
-        {/* Aggregate stats — demoTotal and zerotvmTotal come from two
-            server-side filtered COUNTs over device_sessions, so no
-            client-side derivation or double-counting. */}
         {!loading && (
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
             <div className="card text-center py-4">
               <div className="text-2xl font-extrabold text-bench-accent">{allTotal.toLocaleString()}</div>
               <div className="text-[10px] text-bench-muted mt-1">Total runs</div>
@@ -390,10 +333,6 @@ export default function ResultsPage() {
             <div className="card text-center py-4">
               <div className="text-2xl font-extrabold text-bench-accent">{demoTotal.toLocaleString()}</div>
               <div className="text-[10px] text-bench-muted mt-1">P2P Demos</div>
-            </div>
-            <div className="card text-center py-4">
-              <div className="text-2xl font-extrabold text-bench-accent">{zerotvmTotal.toLocaleString()}</div>
-              <div className="text-[10px] text-bench-muted mt-1">Zero-TVM</div>
             </div>
           </div>
         )}
@@ -427,16 +366,6 @@ export default function ResultsPage() {
               }`}
             >
               Demos
-            </button>
-            <button
-              onClick={() => setTab("zerotvm")}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium transition ${
-                tab === "zerotvm"
-                  ? "bg-bench-accent/10 text-bench-accent"
-                  : "text-bench-muted hover:text-bench-text"
-              }`}
-            >
-              Zero-TVM
             </button>
           </div>
 
@@ -671,77 +600,13 @@ export default function ResultsPage() {
               </div>
             )}
           </>
-        ) : tab === "zerotvm" ? (
-          <>
-            {/* Zero-TVM table drops the Fitness column (always null for
-                LLM decode) and relabels Gen/Rate as Tokens/Tok-per-s so
-                the columns match the workload. */}
-            <div className="rounded-lg border border-bench-border overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead className="bg-bench-surface border-b border-bench-border">
-                  <tr>
-                    <SortHeader label="GPU" field="gpu" currentSort={sortField} currentDir={sortDir} onSort={handleSort} />
-                    <SortHeader label="Device" field="device_name" currentSort={sortField} currentDir={sortDir} onSort={handleSort} />
-                    <SortHeader label="Model" field="workload" currentSort={sortField} currentDir={sortDir} onSort={handleSort} />
-                    <SortHeader label="Tokens" field="gen" currentSort={sortField} currentDir={sortDir} onSort={handleSort} />
-                    <SortHeader label="Tok/s" field="speed" currentSort={sortField} currentDir={sortDir} onSort={handleSort} />
-                    <th className="px-2 py-2 text-left text-[10px] uppercase tracking-wider text-bench-muted">Browser</th>
-                    <th className="px-2 py-2 text-left text-[10px] uppercase tracking-wider text-bench-muted">OS</th>
-                    <SortHeader label="When" field="created_at" currentSort={sortField} currentDir={sortDir} onSort={handleSort} />
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredZerotvm.map((r, i) => (
-                    <tr
-                      key={`${r.created_at}-${r.device_id}-${i}`}
-                      className={`${i % 2 === 0 ? "bg-bench-bg/30" : "bg-bench-surface"} hover:bg-bench-accent/5 transition-colors`}
-                    >
-                      <td className="px-2 py-1.5 font-medium text-bench-text truncate max-w-[180px]">{r.gpu}</td>
-                      <td className="px-2 py-1.5 text-bench-muted">
-                        {r.device_name}
-                        {r.is_mobile && <span className="ml-1 text-[9px] px-1 py-0.5 rounded bg-bench-accent/10 text-bench-accent">mobile</span>}
-                      </td>
-                      <td className="px-2 py-1.5 text-bench-muted">{r.workload}</td>
-                      <td className="px-2 py-1.5 tabular-nums text-bench-muted">{r.gen?.toLocaleString() ?? "—"}</td>
-                      <td className="px-2 py-1.5 tabular-nums text-bench-accent font-bold">{fmtNum(r.speed)}</td>
-                      <td className="px-2 py-1.5 text-bench-muted/60">{shortBrowser(r.browser)}</td>
-                      <td className="px-2 py-1.5 text-bench-muted/60">{r.os}</td>
-                      <td className="px-2 py-1.5 text-bench-muted/40 tabular-nums text-[10px]">{timeAgo(r.created_at)}</td>
-                    </tr>
-                  ))}
-                  {filteredZerotvm.length === 0 && (
-                    <tr><td colSpan={8} className="px-4 py-8 text-center text-bench-muted">No Zero-TVM sessions found</td></tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-            {zerotvmPages > 1 && (
-              <div className="flex items-center justify-center gap-2 mt-4">
-                <button
-                  disabled={zerotvmPage <= 1}
-                  onClick={() => handleZerotvmPage(zerotvmPage - 1)}
-                  className="btn-secondary text-xs py-1 px-2 disabled:opacity-30"
-                >
-                  Prev
-                </button>
-                <span className="text-xs text-bench-muted">
-                  Page {zerotvmPage} of {zerotvmPages}
-                </span>
-                <button
-                  disabled={zerotvmPage >= zerotvmPages}
-                  onClick={() => handleZerotvmPage(zerotvmPage + 1)}
-                  className="btn-secondary text-xs py-1 px-2 disabled:opacity-30"
-                >
-                  Next
-                </button>
-              </div>
-            )}
-          </>
         ) : null}
 
         <p className="text-[10px] text-bench-muted/40 text-center mt-8 mb-4">
           All data is anonymous. Only GPU model, benchmark throughput, browser, and OS are stored. No personal data.
         </p>
+
+        <CompanionProjects />
       </div>
 
       {/* Footer */}

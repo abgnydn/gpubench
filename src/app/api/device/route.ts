@@ -105,16 +105,13 @@ export async function GET(request: Request) {
       const sortCol = ALLOWED_SORT.has(sortParam) ? sortParam : "created_at";
       const sortDir = searchParams.get("dir") === "asc" ? "ASC" : "DESC";
 
-      // Optional workload filter. Zero-TVM (LLM decode) and the P2P
-      // evolution demos live in the same device_sessions table but are
-      // meaningfully different workloads — the UI splits them across two
-      // tabs. Keep the set closed (only known values) so callers can't
-      // sneak arbitrary LIKE patterns through.
+      // P2P evolution demos are the only workload class shown in the
+      // results UI now (the Zero-TVM iframed mirror was retired). Keep
+      // the filter closed-set so callers can't sneak arbitrary LIKE
+      // patterns through.
       const filterParam = searchParams.get("filter");
       let whereSQL = "";
-      if (filterParam === "zerotvm") {
-        whereSQL = "WHERE workload ILIKE '%zero-tvm%'";
-      } else if (filterParam === "p2p") {
+      if (filterParam === "p2p") {
         whereSQL = "WHERE workload NOT ILIKE '%zero-tvm%'";
       }
 

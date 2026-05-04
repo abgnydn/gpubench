@@ -27,19 +27,6 @@ export const LINKS = {
   research: SITES.kernelfusion.url,
   site: SITES.gpubench.url,
 
-  // Zero-TVM — nested pages under zerotvm.com
-  zerotvmSite: SITES.zerotvm.url,
-  zerotvmRepo: SITES.zerotvm.githubRepo!,
-  zerotvmChat: `${SITES.zerotvm.url}/zero-tvm.html`,
-  zerotvmDocs: `${SITES.zerotvm.url}/docs.html`,
-  zerotvmArchitecture: `${SITES.zerotvm.url}/architecture.html`,
-  zerotvmDispatchViz: `${SITES.zerotvm.url}/demo.html`,
-  zerotvmWebllmBench: `${SITES.zerotvm.url}/webllm-bench.html`,
-  zerotvmCompilerChat: `${SITES.zerotvm.url}/compiler-chat.html`,
-  zerotvmShaderDump: `${SITES.zerotvm.url}/dump.html`,
-  zerotvmShaderSource: `${SITES.zerotvm.url}/shaders.html`,
-  zerotvmValidate: `${SITES.zerotvm.url}/validate.html`,
-
   // WebGPU-DNA
   webgpuDnaSite: SITES.webgpudna.url,
   webgpuDnaRepo: SITES.webgpudna.githubRepo!,
