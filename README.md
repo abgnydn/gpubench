@@ -1,5 +1,10 @@
 # gpubench.dev
 
+[![CI](https://github.com/abgnydn/gpubench/actions/workflows/ci.yml/badge.svg)](https://github.com/abgnydn/gpubench/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
+[![Live](https://img.shields.io/badge/live-gpubench.dev-6ea8ff)](https://gpubench.dev)
+[![Sister](https://img.shields.io/badge/native%20version-wgpu--native--bench-orange)](https://github.com/abgnydn/wgpu-native-bench)
+
 **How fast is your GPU in the browser?**
 
 Real WebGPU compute benchmarks running on your hardware. No install, no account — just click Run.
