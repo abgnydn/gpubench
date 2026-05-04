@@ -1,4 +1,4 @@
-import { sql } from "@vercel/postgres";
+import { sql } from "@/lib/db";
 import { NextResponse } from "next/server";
 
 const rateLimit = new Map<string, { count: number; resetAt: number }>();
@@ -207,7 +207,8 @@ export async function GET(request: Request) {
     response.headers.set("Access-Control-Allow-Origin", "*");
     response.headers.set("Access-Control-Allow-Methods", "GET, OPTIONS");
     return response;
-  } catch {
+  } catch (err) {
+    console.error("[api/transformer-results] GET failed:", err);
     const fallback = NextResponse.json({
       total: 0,
       topGpus: [],

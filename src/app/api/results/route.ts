@@ -1,4 +1,4 @@
-import { sql } from "@vercel/postgres";
+import { sql } from "@/lib/db";
 import { NextResponse } from "next/server";
 
 // Rate limiting
@@ -193,7 +193,8 @@ export async function GET(request: Request) {
     response.headers.set("Cache-Control", "public, s-maxage=30, stale-while-revalidate=60");
     response.headers.set("Access-Control-Allow-Origin", "*");
     return response;
-  } catch {
+  } catch (err) {
+    console.error("[api/results] GET failed:", err);
     return NextResponse.json({ total: 0, averages: {}, topGpus: [], recent: [] });
   }
 }

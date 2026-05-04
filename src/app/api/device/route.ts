@@ -1,4 +1,4 @@
-import { sql } from "@vercel/postgres";
+import { sql } from "@/lib/db";
 import { NextResponse } from "next/server";
 
 const rateLimit = new Map<string, { count: number; resetAt: number }>();
