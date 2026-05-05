@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
+import { SiteFooter } from "@/components/site-footer";
 import "./globals.css";
 
 const inter = Inter({
@@ -13,7 +14,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "/" },
   title: "WebGPU Bench — How fast is your GPU in the browser?",
   description:
-    "Run real WebGPU compute benchmarks. 92 devices tested across 7 GPU vendors — kernel fusion median 71× on Apple Silicon, 56× on NVIDIA, 20× on phones. No install — just click Run.",
+    "Real WebGPU compute benchmarks running on visitors' hardware. Six standard workloads — Rastrigin, N-body, Acrobot, MountainCar, CartPole, Monte Carlo Pi — across seven GPU vendors. Live data, updated on every submission. No install — just click Run.",
   keywords: [
     "WebGPU",
     "benchmark",
@@ -26,16 +27,16 @@ export const metadata: Metadata = {
   openGraph: {
     title: "WebGPU Bench — How fast is your GPU in the browser?",
     description:
-      "92 devices tested across 7 GPU vendors. Kernel fusion median: 71× on Apple Silicon, 56× on NVIDIA, 20× on phones. Test yours — no install required.",
+      "Real WebGPU compute benchmarks on your hardware. Six standard workloads (Rastrigin, N-body, Acrobot, MountainCar, CartPole, Monte Carlo Pi) across seven GPU vendors. Click Run — no install.",
     type: "website",
     url: "https://gpubench.dev",
     siteName: "WebGPU Bench",
-    images: [{ url: "/og.png", width: 1200, height: 630, alt: "WebGPU Bench — 71× median Apple Silicon, 56× NVIDIA, 20× phones, 92 devices" }],
+    images: [{ url: "/og.png", width: 1200, height: 630, alt: "WebGPU Bench — Real compute benchmarks in the browser, six workloads across seven GPU vendors" }],
   },
   twitter: {
     card: "summary_large_image",
     title: "WebGPU Bench — How fast is your GPU in the browser?",
-    description: "92 devices tested across 7 GPU vendors. Kernel fusion median: 71× Apple, 56× NVIDIA, 20× phones. No install required.",
+    description: "Real WebGPU compute benchmarks. Six standard workloads across seven GPU vendors. Live data, no install.",
     images: ["/og.png"],
   },
 };
@@ -50,7 +51,7 @@ const jsonLd = {
       "url": "https://gpubench.dev",
       "applicationCategory": "DeveloperApplication",
       "operatingSystem": "Any (WebGPU browser)",
-      "description": "Open WebGPU compute benchmarks. 92 devices tested across 7 GPU vendors — Rastrigin, N-body, Monte Carlo Pi, RL environments.",
+      "description": "Open WebGPU compute benchmarks running on visitors' hardware. Six standard workloads — Rastrigin, N-body, Acrobot-v1, MountainCar-v0, CartPole-v1, Monte Carlo Pi — across seven GPU vendors. Live data.",
       "author": { "@id": "https://gpubench.dev#author" },
       "isPartOf": {
         "@type": "CreativeWork",
@@ -100,7 +101,11 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
       </head>
-      <body className={`${inter.className} min-h-screen`}>{children}<Analytics /></body>
+      <body className={`${inter.className} min-h-screen flex flex-col`}>
+        <div className="flex-1">{children}</div>
+        <SiteFooter />
+        <Analytics />
+      </body>
     </html>
   );
 }
