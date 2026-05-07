@@ -23,7 +23,7 @@ const personas = [
 const steps = [
   { title: "Your GPU is already powerful", desc: "The graphics chip in your laptop \u2014 whether it's Apple Silicon, AMD, Intel, or NVIDIA \u2014 is a parallel processor with thousands of cores. It spends most of its time idle." },
   { title: "Browsers can now talk to it", desc: "WebGPU is a new web standard (shipping in Chrome since 2023) that lets web pages run computation directly on your GPU. Not just graphics \u2014 real number crunching." },
-  { title: "We figured out how to make it fast", desc: "Instead of sending thousands of small tasks to the GPU one by one (like PyTorch does), we pack the entire computation into a single instruction. One dispatch instead of 22,500. The browser only adds 48% overhead vs native, and it's still faster than PyTorch." },
+  { title: "We figured out how to make it fast in the browser", desc: "Instead of sending thousands of small tasks to the GPU one by one (the way naïve eager loops and TF.js do — production compilers like TVM, XLA, and Burn fuse some of this already), we pack the entire computation into a single WebGPU instruction. One dispatch instead of 22,500. The browser adds 48% overhead vs native, and the fused kernel still beats unfused dispatch on every vendor we tested." },
   { title: "We proved it with real benchmarks", desc: "30 independent runs per experiment. Statistical tests. Comparisons against 8 systems on 2 hardware platforms. Not hype \u2014 evidence." },
 ];
 

@@ -387,7 +387,7 @@ export default function HomePage() {
 
         <PaperCard
           title="Single-Kernel Fusion for Sequential Fitness Evaluation via WebGPU Compute Shaders"
-          description="92 real-world devices across 7 GPU vendors: 71× median on Apple Silicon, 56× on NVIDIA, 20× on phones. Originally measured at 159× (WebGPU, M2 Pro) and 720× (CUDA, T4) in the paper."
+          description="Cross-vendor medians, fused vs unfused on the same device: 71× Apple Silicon, 56× NVIDIA, 20× phones (92 devices, 7 vendors). Controlled M2 Pro vs PyTorch MPS in the paper: 159× WebGPU, 720× CUDA on T4."
           doi={LINKS.ecDoi}
           doiLabel={LINKS.ecDoiShort}
         />

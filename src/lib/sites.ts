@@ -31,7 +31,7 @@ export const SITES = {
     url: "https://kernelfusion.dev",
     domain: "kernelfusion.dev",
     name: "kernelfusion.dev",
-    tagline: "Single-kernel fusion — 71× median on Apple Silicon, 56× on NVIDIA, 20× on phones.",
+    tagline: "Single-kernel fusion for WebGPU — fused vs unfused medians: 71× Apple Silicon, 56× NVIDIA, 20× phones.",
     shortDesc:
       "The research line. Two published preprints, one npm SDK, 92 unique devices across 7 GPU vendors. The theory that all the applied projects build on.",
     category: "Theory",
