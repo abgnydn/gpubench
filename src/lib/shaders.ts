@@ -26,8 +26,12 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
 `;
 
 // ═══════════════════════════════════════════
-// 2. N-BODY — Classic GPU sequential simulation (SEQUENTIAL)
-// Each thread simulates one body through all timesteps
+// 2. N-BODY (FROZEN FIELD) — Gravity integration kernel (SEQUENTIAL)
+// Each thread integrates one body through all timesteps against the FROZEN
+// initial positions of the others (one-way interactions). A fully coupled
+// N-body simulation cannot be fused into a single dispatch — it needs
+// cross-workgroup sync every timestep — so this is deliberately the
+// fusable approximation, not real N-body dynamics.
 // ═══════════════════════════════════════════
 export const NBODY_SHADER = /* wgsl */ `
 @group(0) @binding(0) var<storage, read> initial_pos: array<f32>;   // N * 4 (x, y, vx, vy per body)
@@ -81,8 +85,10 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
 `;
 
 // ═══════════════════════════════════════════
-// 3. ACROBOT — Standard Gym RL environment (SEQUENTIAL)
-// Double pendulum swing-up with RK4 physics
+// 3. ACROBOT — Gym-style double pendulum swing-up (SEQUENTIAL)
+// Dynamics follow Gym's Acrobot-v1 ("book" variant of Sutton's equations),
+// integrated with explicit Euler at dt=0.05 (Gym itself uses RK4 at dt=0.2).
+// Reward shaping is custom (fitness for the evolved NN policy).
 // ═══════════════════════════════════════════
 export const ACROBOT_SHADER = /* wgsl */ `
 @group(0) @binding(0) var<storage, read> genomes: array<f32>;
@@ -149,13 +155,19 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
 
     let torque = nn_forward(gBase, s0, s1, s2, s3, s4, s5);
 
-    // RK4 integration (simplified Acrobot dynamics)
-    let d2 = M2 * (LC2 * LC2 + LINK1 * LC2 * cos(theta2) + I2);
+    // Gym Acrobot-v1 dynamics ("book" variant), explicit Euler step
+    let d1 = M1 * LC1 * LC1
+           + M2 * (LINK1 * LINK1 + LC2 * LC2 + 2.0 * LINK1 * LC2 * cos(theta2))
+           + I1 + I2;
+    let d2 = M2 * (LC2 * LC2 + LINK1 * LC2 * cos(theta2)) + I2;
     let phi2 = M2 * LC2 * GRAVITY * cos(theta1 + theta2 - PI / 2.0);
     let phi1 = -M2 * LINK1 * LC2 * dtheta2 * dtheta2 * sin(theta2)
+               - 2.0 * M2 * LINK1 * LC2 * dtheta2 * dtheta1 * sin(theta2)
                + (M1 * LC1 + M2 * LINK1) * GRAVITY * cos(theta1 - PI / 2.0) + phi2;
-    let ddtheta2 = (torque + d2 / d2 * phi1 - phi2) / (M2 * LC2 * LC2 + I2);
-    let ddtheta1 = -(d2 * ddtheta2 + phi1) / (M1 * LC1 * LC1 + M2 * (LINK1 * LINK1 + LC2 * LC2) + I1 + I2);
+    let ddtheta2 = (torque + (d2 / d1) * phi1
+                    - M2 * LINK1 * LC2 * dtheta1 * dtheta1 * sin(theta2) - phi2)
+                   / (M2 * LC2 * LC2 + I2 - d2 * d2 / d1);
+    let ddtheta1 = -(d2 * ddtheta2 + phi1) / d1;
 
     dtheta1 = dtheta1 + ddtheta1 * DT;
     dtheta2 = dtheta2 + ddtheta2 * DT;

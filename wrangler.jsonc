@@ -1,0 +1,31 @@
+// Cloudflare Workers deploy config (OpenNext). Mirrors the live worker's
+// settings (compat date/flags + bindings introspected from the deployed
+// version). Secrets (STORAGE_POSTGRES_URL, SETUP_SECRET) live on the worker
+// and persist across deploys — never put them here.
+//
+// Deploy:
+//   npx opennextjs-cloudflare build
+//   npx wrangler versions upload            # staged: preview URL, no traffic
+//   npx wrangler versions deploy            # promote to 100%
+// or `npx wrangler deploy` for direct deploys.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "gpubench",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2025-03-01",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "services": [
+    { "binding": "WORKER_SELF_REFERENCE", "service": "gpubench" }
+  ],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "gpubench",
+      "database_id": "f445cb01-374d-45ee-8eca-a12c254ab481"
+    }
+  ]
+}

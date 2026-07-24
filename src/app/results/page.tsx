@@ -243,7 +243,7 @@ export default function ResultsPage() {
 
   const csvExport = () => {
     if (tab === "compute") {
-      const header = "GPU,Vendor,Score,Rastrigin,N-Body,Acrobot,MountainCar,MonteCarlo,Browser,OS,Mobile,Timestamp";
+      const header = "GPU,Vendor,Score,Rastrigin,N-Body,Acrobot,MountainCar,CartPole,MonteCarlo,Browser,OS,Mobile,Timestamp";
       const rows = filteredCompute.map((r) =>
         [r.gpu_name, r.gpu_vendor, r.score, r.rastrigin_gps, r.nbody_gps, r.acrobot_gps, r.mountaincar_gps, r.cartpole_gps, r.montecarlo_gps, shortBrowser(r.browser), r.os, r.is_mobile, r.created_at]
           .map((v) => `"${v ?? ""}"`)

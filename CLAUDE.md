@@ -9,11 +9,13 @@ no cherry-picking.
 
 ## Architecture
 
-Next.js 16 with App Router + `/api/*` serverless functions backed by Vercel
-Postgres. **This is the only non-static site** in the constellation — it
-can't deploy to Cloudflare Pages because it needs server runtime for
-`/api/device`, `/api/results`, `/api/setup`, `/api/transformer-results`.
-Deploys to Vercel.
+Next.js 16 with App Router + `/api/*` routes backed by Neon Postgres
+(`STORAGE_POSTGRES_URL`). Deploys to **Cloudflare Workers via OpenNext** —
+config lives in-repo (`wrangler.jsonc` + `open-next.config.ts`); secrets
+(`STORAGE_POSTGRES_URL`, `SETUP_SECRET`) live on the worker and persist
+across deploys. Schema migrations are self-healing: any "column does not
+exist" error replays the idempotent list in `src/lib/migrations.js` once
+(see `src/lib/db.ts`), so deploy order never matters.
 
 - `src/app/page.tsx` — main benchmark page. `BENCHMARKS` array (top of file)
   drives the card grid. Companion-projects section at the bottom renders
@@ -51,7 +53,9 @@ npm run check        # typecheck + lint + test
 npm run sync:zerotvm # one-off: pull zerotvm benchmark data
 ```
 
-Deploy: `node ~/sites-shared/deploy.mjs gpubench` → `vercel deploy --prod`.
+Deploy (staged): `npx opennextjs-cloudflare build && npx wrangler versions upload`
+→ smoke-test the preview URL → `npx wrangler versions deploy` to promote.
+Direct: `npx opennextjs-cloudflare build && npx wrangler deploy`.
 
 ## Cross-site context
 
@@ -62,10 +66,9 @@ Deploy: `node ~/sites-shared/deploy.mjs gpubench` → `vercel deploy --prod`.
 - TS config has `strict: true` + `noUncheckedIndexedAccess: true`, so lookups
   like `SITES[CROSSLINKS.gpubench[0]]` need a non-null assertion (`!`) on the
   indexer — see `COMPANION_FLAGSHIP` in `page.tsx`.
-- `src/lib/shader-gen.js` has two pre-existing unused-variable lint errors
-  (same file as kernelfusion — shared via the sync).
-- Several `tests/transformer-*.test.*` files are empty placeholders that
-  vitest reports as "no test suite found". Harmless but noisy.
-- Not yet migrated to Cloudflare Pages — the only site still on Vercel
-  because of `/api/*`. Future: port endpoints to CF Workers + D1 for a full
-  constellation migration.
+- `src/lib/shader-gen.js` has DIVERGED from `~/sites-shared/shader-gen.js`
+  (residual bindings on unfused Attn/FFN, parallel-fused scratch fix,
+  `layerOffsets` export). Backport to sites-shared before running the sync
+  script again, or the fixes get overwritten.
+- The worker has an unused D1 binding (`DB`) provisioned for a possible
+  future Postgres → D1 migration; the app still uses Neon Postgres.

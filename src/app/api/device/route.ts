@@ -1,53 +1,12 @@
 import { sql } from "@/lib/db";
 import { NextResponse } from "next/server";
+import { createRateLimiter, getClientIp, num, parseUA, str } from "@/lib/api-utils";
 
-const rateLimit = new Map<string, { count: number; resetAt: number }>();
-function isRateLimited(ip: string): boolean {
-  const now = Date.now();
-  const entry = rateLimit.get(ip);
-  if (!entry || now > entry.resetAt) {
-    rateLimit.set(ip, { count: 1, resetAt: now + 60_000 });
-    return false;
-  }
-  entry.count++;
-  return entry.count > 30; // generous — demos POST every 5s
-}
-
-function str(v: unknown, max = 500): string {
-  if (typeof v !== "string") return "";
-  return v.slice(0, max);
-}
-
-function num(v: unknown): number | null {
-  if (v === null || v === undefined) return null;
-  if (typeof v !== "number" || !Number.isFinite(v)) return null;
-  return v;
-}
-
-function parseUA(ua: string): { browser: string; os: string } {
-  let browser = "Unknown";
-  let os = "Unknown";
-  if (ua.includes("Chrome/")) {
-    const match = /Chrome\/([\d.]+)/.exec(ua);
-    browser = match ? `Chrome ${match[1]}` : "Chrome";
-  } else if (ua.includes("Firefox/")) {
-    browser = "Firefox";
-  } else if (ua.includes("Safari/") && !ua.includes("Chrome")) {
-    browser = "Safari";
-  }
-  if (ua.includes("Mac OS X")) os = "macOS";
-  else if (ua.includes("Windows")) os = "Windows";
-  else if (ua.includes("Linux")) os = "Linux";
-  else if (ua.includes("Android")) os = "Android";
-  else if (ua.includes("iPhone") || ua.includes("iPad")) os = "iOS";
-  return { browser, os };
-}
+const isRateLimited = createRateLimiter(30); // generous — demos POST every 5s
 
 export async function POST(request: Request) {
   try {
-    const forwarded = request.headers.get("x-forwarded-for");
-    const ip = forwarded?.split(",")[0]?.trim() ?? "unknown";
-    if (isRateLimited(ip)) {
+    if (isRateLimited(getClientIp(request))) {
       return NextResponse.json({ error: "Too many requests" }, { status: 429 });
     }
 

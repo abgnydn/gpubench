@@ -26,7 +26,10 @@ export async function detectGPU(): Promise<GpuInfo> {
   }
 
   try {
-    const adapter = await navigator.gpu.requestAdapter();
+    // Must match the adapter the benchmarks run on (BenchmarkRunner and the
+    // transformer bench both request high-performance) so the reported GPU
+    // name is the one that was actually measured.
+    const adapter = await navigator.gpu.requestAdapter({ powerPreference: "high-performance" });
     if (!adapter) return unsupported;
 
     const device = await adapter.requestDevice();

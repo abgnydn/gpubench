@@ -1,55 +1,14 @@
 import { sql } from "@/lib/db";
 import { NextResponse } from "next/server";
+import { bool, createRateLimiter, getClientIp, num, parseUA, str, timingStatsPlausible } from "@/lib/api-utils";
 
-// Rate limiting
-const rateLimit = new Map<string, { count: number; resetAt: number }>();
-function isRateLimited(ip: string): boolean {
-  const now = Date.now();
-  const entry = rateLimit.get(ip);
-  if (!entry || now > entry.resetAt) {
-    rateLimit.set(ip, { count: 1, resetAt: now + 60_000 });
-    return false;
-  }
-  entry.count++;
-  return entry.count > 10;
-}
+const isRateLimited = createRateLimiter(10);
 
-function parseUA(ua: string): { browser: string; os: string } {
-  let browser = "Unknown";
-  let os = "Unknown";
-  if (ua.includes("Chrome/")) {
-    const match = /Chrome\/([\d.]+)/.exec(ua);
-    browser = match ? `Chrome ${match[1]}` : "Chrome";
-  } else if (ua.includes("Firefox/")) { browser = "Firefox"; }
-  else if (ua.includes("Safari/") && !ua.includes("Chrome")) { browser = "Safari"; }
-  if (ua.includes("Mac OS X")) os = "macOS";
-  else if (ua.includes("Windows")) os = "Windows";
-  else if (ua.includes("Linux")) os = "Linux";
-  else if (ua.includes("CrOS")) os = "ChromeOS";
-  else if (ua.includes("Android")) os = "Android";
-  return { browser, os };
-}
-
-function num(v: unknown): number | null {
-  if (v === null || v === undefined) return null;
-  if (typeof v !== "number" || !Number.isFinite(v)) return null;
-  return v;
-}
-
-function str(v: unknown, max = 500): string {
-  if (typeof v !== "string") return "";
-  return v.slice(0, max);
-}
-
-function bool(v: unknown): boolean {
-  return v === true;
-}
+const BENCH_KEYS = ["rastrigin", "nbody", "acrobot", "mountaincar", "cartpole", "montecarlo"] as const;
 
 export async function POST(request: Request) {
   try {
-    const forwarded = request.headers.get("x-forwarded-for");
-    const ip = forwarded?.split(",")[0]?.trim() ?? "unknown";
-    if (isRateLimited(ip)) {
+    if (isRateLimited(getClientIp(request))) {
       return NextResponse.json({ error: "Too many requests" }, { status: 429 });
     }
 
@@ -66,6 +25,25 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid submission" }, { status: 400 });
     }
 
+    // Per-benchmark internal consistency — the endpoint is unauthenticated,
+    // so structurally impossible stats are rejected instead of stored.
+    for (const key of BENCH_KEYS) {
+      const plausible = timingStatsPlausible({
+        gps: num(body[key]),
+        mean: num(body[`${key}Mean`]),
+        min: num(body[`${key}Min`]),
+        max: num(body[`${key}Max`]),
+        std: num(body[`${key}Std`]),
+      });
+      if (!plausible) {
+        return NextResponse.json({ error: "Implausible submission" }, { status: 400 });
+      }
+      const batched = num(body[`${key}Batched`]);
+      if (batched !== null && (batched <= 0 || batched > 10_000_000)) {
+        return NextResponse.json({ error: "Implausible submission" }, { status: 400 });
+      }
+    }
+
     const ua = request.headers.get("user-agent") ?? "";
     const { browser, os } = parseUA(ua);
     const id = crypto.randomUUID();
@@ -73,8 +51,10 @@ export async function POST(request: Request) {
     await sql`
       INSERT INTO benchmark_runs (
         id, gpu_name, gpu_vendor, gpu_arch, max_buffer, features, browser, os,
-        parallel_gps, sequential_gps, matrix_gps, score,
+        parallel_gps, sequential_gps, matrix_gps, score, bench_version,
         rastrigin_gps, nbody_gps, acrobot_gps, mountaincar_gps, cartpole_gps, montecarlo_gps,
+        rastrigin_batched_gps, nbody_batched_gps, acrobot_batched_gps,
+        mountaincar_batched_gps, cartpole_batched_gps, montecarlo_batched_gps,
         max_workgroup_x, max_workgroup_y, max_workgroup_z, max_invocations,
         backend, device_pixel_ratio, screen_width, screen_height, is_mobile,
         rastrigin_mean, rastrigin_min, rastrigin_max, rastrigin_std,
@@ -88,8 +68,11 @@ export async function POST(request: Request) {
         ${num(body["maxBuffer"]) ?? 0}, ${num(body["features"]) ?? 0},
         ${browser}, ${os},
         ${num(body["parallel"])}, ${num(body["sequential"])}, ${num(body["matrix"])}, ${score},
+        ${num(body["benchVersion"]) ?? 1},
         ${num(body["rastrigin"])}, ${num(body["nbody"])}, ${num(body["acrobot"])},
         ${num(body["mountaincar"])}, ${num(body["cartpole"])}, ${num(body["montecarlo"])},
+        ${num(body["rastriginBatched"])}, ${num(body["nbodyBatched"])}, ${num(body["acrobotBatched"])},
+        ${num(body["mountaincarBatched"])}, ${num(body["cartpoleBatched"])}, ${num(body["montecarloBatched"])},
         ${num(body["maxWorkgroupX"]) ?? 0}, ${num(body["maxWorkgroupY"]) ?? 0},
         ${num(body["maxWorkgroupZ"]) ?? 0}, ${num(body["maxInvocations"]) ?? 0},
         ${str(body["backend"])}, ${num(body["devicePixelRatio"]) ?? 1},

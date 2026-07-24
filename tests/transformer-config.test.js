@@ -1,20 +1,18 @@
 /**
- * Test that transformer benchmark config filtering works correctly.
- * Run: node tests/transformer-config.test.js
+ * Transformer benchmark config + shader-gen invariants.
+ * Runs under vitest (`npm run test`) — no GPU required.
  */
+import { describe, it, expect } from "vitest";
+import { CONFIGS, SEQ_CONFIGS, runSweepWithConfigs } from "@/lib/transformer-bench.js";
+import {
+  generateConfig, layerOffsets,
+  generateFusedShader, generateParallelFusedShader,
+  generateUnfusedAttn, generateUnfusedFFN, generateUnfusedLN,
+} from "@/lib/shader-gen.js";
 
-// Simulate the module
-const CONFIGS = [
-  { D: 32,  heads: 2, ffn: 4, seq: 64, layers: 1, label: 'D=32, L=1' },
-  { D: 32,  heads: 2, ffn: 4, seq: 64, layers: 4, label: 'D=32, L=4' },
-  { D: 64,  heads: 2, ffn: 4, seq: 64, layers: 1, label: 'D=64, L=1' },
-  { D: 64,  heads: 2, ffn: 4, seq: 64, layers: 4, label: 'D=64, L=4' },
-  { D: 128, heads: 2, ffn: 4, seq: 64, layers: 1, label: 'D=128, L=1' },
-  { D: 128, heads: 2, ffn: 4, seq: 64, layers: 4, label: 'D=128, L=4' },
-];
-
-// Simulate the ALL_CONFIGS from the page
-const ALL_CONFIGS = [
+// Mirrors ALL_CONFIGS in src/app/transformer/page.tsx — the page filters
+// module CONFIGS by label, so the labels must stay in sync.
+const PAGE_CONFIGS = [
   { key: "d32l1", label: "D=32, L=1", default: true },
   { key: "d32l4", label: "D=32, L=4", default: true },
   { key: "d64l1", label: "D=64, L=1", default: true },
@@ -23,85 +21,72 @@ const ALL_CONFIGS = [
   { key: "d128l4", label: "D=128, L=4", default: false },
 ];
 
-let passes = 0;
-let failures = 0;
-
-function check(name, actual, expected) {
-  if (JSON.stringify(actual) === JSON.stringify(expected)) {
-    console.log(`  OK: ${name}`);
-    passes++;
-  } else {
-    console.error(`  FAIL: ${name}`);
-    console.error(`    Expected: ${JSON.stringify(expected)}`);
-    console.error(`    Got:      ${JSON.stringify(actual)}`);
-    failures++;
-  }
+function filterByKeys(keys) {
+  const labels = new Set(PAGE_CONFIGS.filter((c) => keys.has(c.key)).map((c) => c.label));
+  return CONFIGS.filter((c) => labels.has(c.label));
 }
 
-// Test 1: Default selection picks first 4 (D=32 and D=64)
-console.log("\n=== Default selection ===");
-const defaultSelected = new Set(ALL_CONFIGS.filter(c => c.default).map(c => c.key));
-check("Default has 4 configs", defaultSelected.size, 4);
-check("D=32 L=1 selected", defaultSelected.has("d32l1"), true);
-check("D=64 L=4 selected", defaultSelected.has("d64l4"), true);
-check("D=128 L=1 NOT selected", defaultSelected.has("d128l1"), false);
+describe("config selection", () => {
+  it("defaults to the 4 fast configs", () => {
+    const selected = new Set(PAGE_CONFIGS.filter((c) => c.default).map((c) => c.key));
+    expect(selected.size).toBe(4);
+    expect(selected.has("d32l1")).toBe(true);
+    expect(selected.has("d64l4")).toBe(true);
+    expect(selected.has("d128l1")).toBe(false);
+  });
 
-// Test 2: Filtering CONFIGS based on selection
-console.log("\n=== Filter: only D=32 L=1 ===");
-const onlyOne = new Set(["d32l1"]);
-const selectedLabels1 = new Set(ALL_CONFIGS.filter(c => onlyOne.has(c.key)).map(c => c.label));
-const filtered1 = CONFIGS.filter(c => selectedLabels1.has(c.label));
-check("Filtered to 1 config", filtered1.length, 1);
-check("Config is D=32 L=1", filtered1[0].label, "D=32, L=1");
-check("Original CONFIGS unchanged", CONFIGS.length, 6);
+  it("filters CONFIGS by page selection without mutating", () => {
+    const before = CONFIGS.length;
+    expect(filterByKeys(new Set(["d32l1"])).map((c) => c.label)).toEqual(["D=32, L=1"]);
+    expect(filterByKeys(new Set(["d32l1", "d32l4"]))).toHaveLength(2);
+    expect(filterByKeys(new Set(PAGE_CONFIGS.map((c) => c.key)))).toHaveLength(6);
+    expect(filterByKeys(new Set())).toHaveLength(0);
+    expect(CONFIGS.length).toBe(before);
+  });
 
-// Test 3: Filter D=32 L=1 and D=32 L=4 only
-console.log("\n=== Filter: D=32 only ===");
-const d32Only = new Set(["d32l1", "d32l4"]);
-const selectedLabels2 = new Set(ALL_CONFIGS.filter(c => d32Only.has(c.key)).map(c => c.label));
-const filtered2 = CONFIGS.filter(c => selectedLabels2.has(c.label));
-check("Filtered to 2 configs", filtered2.length, 2);
-check("First is D=32 L=1", filtered2[0].label, "D=32, L=1");
-check("Second is D=32 L=4", filtered2[1].label, "D=32, L=4");
+  it("page labels match module labels exactly", () => {
+    expect(PAGE_CONFIGS.map((c) => c.label)).toEqual(CONFIGS.map((c) => c.label));
+  });
 
-// Test 4: Select all
-console.log("\n=== Filter: all selected ===");
-const allSelected = new Set(ALL_CONFIGS.map(c => c.key));
-const selectedLabels3 = new Set(ALL_CONFIGS.filter(c => allSelected.has(c.key)).map(c => c.label));
-const filtered3 = CONFIGS.filter(c => selectedLabels3.has(c.label));
-check("All 6 configs", filtered3.length, 6);
+  it("runSweepWithConfigs takes (configs, log, onResult)", () => {
+    expect(runSweepWithConfigs.length).toBe(3);
+  });
 
-// Test 5: Select none
-console.log("\n=== Filter: none selected ===");
-const noneSelected = new Set();
-const selectedLabels4 = new Set(ALL_CONFIGS.filter(c => noneSelected.has(c.key)).map(c => c.label));
-const filtered4 = CONFIGS.filter(c => selectedLabels4.has(c.label));
-check("Zero configs", filtered4.length, 0);
+  it("SEQ_CONFIGS keeps D=32, L=1 across sequence lengths", () => {
+    for (const c of SEQ_CONFIGS) {
+      expect(c.D).toBe(32);
+      expect(c.layers).toBe(1);
+    }
+  });
+});
 
-// Test 6: Labels match between page and module
-console.log("\n=== Label consistency ===");
-const pageLabels = ALL_CONFIGS.map(c => c.label);
-const moduleLabels = CONFIGS.map(c => c.label);
-check("Same number of configs", pageLabels.length, moduleLabels.length);
-for (let i = 0; i < pageLabels.length; i++) {
-  check(`Label ${i} matches: "${pageLabels[i]}"`, pageLabels[i], moduleLabels[i]);
-}
+describe("shader-gen invariants", () => {
+  const cfg = generateConfig(64, 2, 4, 64, 4);
 
-// Test 7: runSweepWithConfigs receives correct configs
-console.log("\n=== Simulated sweep ===");
-let sweepReceived = [];
-function fakeRunSweepWithConfigs(configs) {
-  sweepReceived = configs.map(c => c.label);
-}
-const testSelection = new Set(["d32l1", "d64l4"]);
-const testLabels = new Set(ALL_CONFIGS.filter(c => testSelection.has(c.key)).map(c => c.label));
-const testFiltered = CONFIGS.filter(c => testLabels.has(c.label));
-fakeRunSweepWithConfigs(testFiltered);
-check("Sweep received 2 configs", sweepReceived.length, 2);
-check("First is D=32, L=1", sweepReceived[0], "D=32, L=1");
-check("Second is D=64, L=4", sweepReceived[1], "D=64, L=4");
+  it("layerOffsets covers exactly one layer of packed weights", () => {
+    const o = layerOffsets(cfg);
+    const { D, DF } = cfg;
+    // Last tensor is b2 (D floats); its end must equal perLayer.
+    expect(o.B2 + D).toBe(cfg.perLayer);
+    expect(o.W2).toBe(o.B1 + DF);
+    expect(cfg.totalWeights).toBe(cfg.perLayer * cfg.NL);
+  });
 
-console.log(`\n${"=".repeat(40)}`);
-console.log(`RESULTS: ${passes} passed, ${failures} failed`);
-console.log(`${"=".repeat(40)}`);
-if (failures > 0) process.exit(1);
+  it("unfused attn/ffn expose a residual binding so the chain matches the fused dataflow", () => {
+    expect(generateUnfusedAttn(cfg)).toContain("binding(7)");
+    expect(generateUnfusedFFN(cfg)).toContain("binding(7)");
+    expect(generateUnfusedLN(cfg)).not.toContain("binding(7)");
+  });
+
+  it("parallel-fused FFN scratch writes past the SL*D output region", () => {
+    const src = generateParallelFusedShader(cfg, 64);
+    const scratchBase = cfg.SL * cfg.D;
+    expect(src).toContain(`out[${scratchBase}u + i] = gelu(a)`);
+  });
+
+  it("fused shader bakes the config constants", () => {
+    const src = generateFusedShader(cfg);
+    expect(src).toContain(`const D: u32 = ${cfg.D}u`);
+    expect(src).toContain(`const NL: u32 = ${cfg.NL}u`);
+  });
+});
