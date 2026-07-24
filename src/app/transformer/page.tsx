@@ -8,16 +8,28 @@ import { PaperCard } from "@/components/paper-card";
 import { TabSwitcher } from "@/components/tab-switcher";
 import { CompanionProjects } from "@/components/companion-projects";
 
+interface BenchTiming {
+  median_ms: number;
+  mean_ms: number;
+  std_ms: number;
+  tokens_per_sec: number;
+}
+
 interface BenchResult {
   label: string;
   D?: number;
   layers: number;
   dispatches: number;
-  unfused: { mean_ms: number; std_ms: number; tokens_per_sec: number };
-  fused: { mean_ms: number; std_ms: number; tokens_per_sec: number };
-  parallel?: { mean_ms: number; std_ms: number; tokens_per_sec: number };
+  unfused: BenchTiming;
+  unfusedBatched?: BenchTiming;
+  fused: BenchTiming;
+  parallel?: BenchTiming;
   speedup: number;
   parSpeedup?: number;
+  batchedSpeedup?: number;
+  equivUnfusedDiff?: number;
+  equivParallelDiff?: number;
+  equivOk?: boolean;
   error?: string;
 }
 
@@ -107,11 +119,16 @@ export default function TransformerPage() {
                 layers: row.layers,
                 dModel: row.D || 0,
                 dispatches: row.dispatches,
-                unfusedMs: row.unfused.mean_ms,
-                fused1tMs: row.fused?.mean_ms ?? null,
-                parallelMs: row.parallel?.mean_ms ?? null,
+                // Medians, not means — means are skewed by browser stalls
+                // (see the comment on STATS in src/lib/constants.ts).
+                unfusedMs: row.unfused.median_ms,
+                unfusedBatchedMs: row.unfusedBatched?.median_ms ?? null,
+                fused1tMs: row.fused?.median_ms ?? null,
+                parallelMs: row.parallel?.median_ms ?? null,
                 speedup1t: row.speedup,
                 speedupParallel: row.parSpeedup ?? null,
+                speedupBatched: row.batchedSpeedup ?? null,
+                equivMaxDiff: Math.max(row.equivUnfusedDiff ?? 0, row.equivParallelDiff ?? 0),
                 tokensPerSec: row.parallel?.tokens_per_sec ?? row.fused?.tokens_per_sec ?? null,
                 screenWidth: window.screen.width,
                 screenHeight: window.screen.height,
@@ -155,8 +172,9 @@ export default function TransformerPage() {
           </span>
         </h1>
         <p className="text-bench-muted max-w-xl mx-auto mb-2">
-          Fused vs unfused autoregressive decoding. Single-threaded and parallel (64 threads).
-          6 configs + sequence scaling.
+          One fused dispatch vs unfused kernels — both as worst-case per-token decode
+          (no KV cache, one submit per layer) and as a fair single-submit forward pass.
+          All variants share weights and are cross-checked for equal outputs before timing.
         </p>
       </header>
 
@@ -240,33 +258,44 @@ export default function TransformerPage() {
                 <tr className="border-b border-bench-border text-bench-muted text-xs">
                   <th className="text-left py-2 pr-3">Config</th>
                   <th className="text-right py-2 px-2">Dispatches</th>
-                  <th className="text-right py-2 px-2">Unfused</th>
+                  <th className="text-right py-2 px-2">Unfused decode</th>
+                  <th className="text-right py-2 px-2">Unfused 1-submit</th>
                   <th className="text-right py-2 px-2">Fused 1T</th>
                   <th className="text-right py-2 px-2">Parallel</th>
-                  <th className="text-right py-2 px-2">1T</th>
-                  <th className="text-right py-2 pl-2">Parallel</th>
+                  <th className="text-right py-2 px-2">vs decode</th>
+                  <th className="text-right py-2 pl-2">vs 1-submit</th>
                 </tr>
               </thead>
               <tbody>
                 {results.map((r, i) => (
                   <tr key={i} className="border-b border-bench-border/30">
                     {r.error ? (
-                      <td colSpan={7} className="py-2 text-bench-red text-xs">{r.label}: {r.error}</td>
+                      <td colSpan={8} className="py-2 text-bench-red text-xs">{r.label}: {r.error}</td>
                     ) : (
                       <>
-                        <td className="py-2 pr-3 font-medium text-bench-text">{r.label}</td>
+                        <td className="py-2 pr-3 font-medium text-bench-text">
+                          {r.label}
+                          {r.equivOk === false && <span className="text-bench-red text-[10px] block">output mismatch</span>}
+                        </td>
                         <td className="py-2 px-2 text-right text-bench-muted">{r.dispatches}</td>
-                        <td className="py-2 px-2 text-right text-bench-muted">{r.unfused.mean_ms.toFixed(0)}ms</td>
-                        <td className="py-2 px-2 text-right">{r.fused.mean_ms.toFixed(1)}ms</td>
-                        <td className="py-2 px-2 text-right text-bench-accent">{r.parallel ? `${r.parallel.mean_ms.toFixed(1)}ms` : "—"}</td>
+                        <td className="py-2 px-2 text-right text-bench-muted">{r.unfused.median_ms.toFixed(0)}ms</td>
+                        <td className="py-2 px-2 text-right text-bench-muted">{r.unfusedBatched ? `${r.unfusedBatched.median_ms.toFixed(1)}ms` : "—"}</td>
+                        <td className="py-2 px-2 text-right">{r.fused.median_ms.toFixed(1)}ms</td>
+                        <td className="py-2 px-2 text-right text-bench-accent">{r.parallel ? `${r.parallel.median_ms.toFixed(1)}ms` : "—"}</td>
                         <td className="py-2 px-2 text-right font-semibold text-bench-green">{r.speedup.toFixed(1)}×</td>
-                        <td className="py-2 pl-2 text-right font-bold text-bench-accent">{r.parSpeedup ? `${r.parSpeedup.toFixed(0)}×` : "—"}</td>
+                        <td className="py-2 pl-2 text-right font-bold text-bench-accent">{r.batchedSpeedup ? `${r.batchedSpeedup.toFixed(1)}×` : "—"}</td>
                       </>
                     )}
                   </tr>
                 ))}
               </tbody>
             </table>
+            <p className="text-[11px] text-bench-muted/60 mt-3 leading-relaxed">
+              Median times. <span className="text-bench-text/70">Unfused decode</span> is the worst case: per-token
+              autoregressive loop, no KV cache, one submit per layer. <span className="text-bench-text/70">Unfused
+              1-submit</span> runs the same kernels as one command buffer — the fair dispatch-overhead comparison.
+              All variants are verified to produce the same output before timing.
+            </p>
           </div>
         )}
 

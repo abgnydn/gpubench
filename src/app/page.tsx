@@ -20,6 +20,8 @@ interface BenchState {
   result?: BenchmarkResult;
 }
 
+// `params` is the shader's uniform contents, passed through verbatim \u2014
+// [pop, dim] for vec2 shaders, [pop, genomeSize, steps] for vec3 shaders.
 const BENCHMARKS = [
   {
     key: "rastrigin",
@@ -28,46 +30,56 @@ const BENCHMARKS = [
     icon: "\u{1F4CA}",
     populationSize: 4096,
     dimensions: 2000,
+    params: [4096, 2000],
+    input: "random-floats",
     warmupIterations: 5,
     benchmarkIterations: 50,
   },
   {
     key: "nbody",
     name: "N-Body Simulation",
-    description: "Gravitational physics, 512 bodies, 200 timesteps fused (SEQUENTIAL)",
+    description: "Gravity kernel, 512 bodies \u00D7 200 fused timesteps against frozen initial positions (SEQUENTIAL)",
     icon: "\u{1F30C}",
     populationSize: 512,
     dimensions: 4,
+    params: [512, 200, 0],
+    input: "random-floats",
     warmupIterations: 3,
     benchmarkIterations: 30,
   },
   {
     key: "acrobot",
     name: "Acrobot-v1",
-    description: "Standard Gym RL, double pendulum, 500 steps with RK4 physics (SEQUENTIAL)",
+    description: "Gym-style double pendulum, 500 Euler steps, 6\u219216\u21923 NN policy (SEQUENTIAL)",
     icon: "\u{1F3AF}",
     populationSize: 4096,
     dimensions: 163,
+    params: [4096, 163, 500],
+    input: "random-floats",
     warmupIterations: 3,
     benchmarkIterations: 30,
   },
   {
     key: "mountaincar",
     name: "MountainCar-v0",
-    description: "Standard Gym RL, 200 timesteps, linear policy (SEQUENTIAL)",
+    description: "Gym MountainCar physics, 200 timesteps, linear policy (SEQUENTIAL)",
     icon: "\u{26F0}\uFE0F",
     populationSize: 4096,
     dimensions: 9,
+    params: [4096, 9, 200],
+    input: "random-floats",
     warmupIterations: 5,
     benchmarkIterations: 50,
   },
   {
     key: "cartpole",
     name: "CartPole-v1",
-    description: "Standard Gym RL, inverted pendulum, 500 steps, 4\u21928\u21922 NN policy (SEQUENTIAL)",
+    description: "Gym CartPole physics, 500 steps, 4\u21928\u21922 NN policy (SEQUENTIAL)",
     icon: "\u{2696}\uFE0F",
     populationSize: 4096,
     dimensions: 58,
+    params: [4096, 58, 500],
+    input: "random-floats",
     warmupIterations: 3,
     benchmarkIterations: 30,
   },
@@ -78,24 +90,22 @@ const BENCHMARKS = [
     icon: "\u{1F3B2}",
     populationSize: 4096,
     dimensions: 1,
+    params: [4096, 100000],
+    input: "random-seeds",
     warmupIterations: 5,
     benchmarkIterations: 50,
   },
 ] as const;
+
+const idleStates = (): Record<string, BenchState> =>
+  Object.fromEntries(BENCHMARKS.map((b) => [b.key, { status: "idle", progress: 0 }]));
 
 export default function HomePage() {
   const [gpuInfo, setGpuInfo] = useState<GpuInfo | null>(null);
   const [gpuLoading, setGpuLoading] = useState(true);
   const [running, setRunning] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [benchStates, setBenchStates] = useState<Record<string, BenchState>>({
-    rastrigin: { status: "idle", progress: 0 },
-    nbody: { status: "idle", progress: 0 },
-    acrobot: { status: "idle", progress: 0 },
-    mountaincar: { status: "idle", progress: 0 },
-    cartpole: { status: "idle", progress: 0 },
-    montecarlo: { status: "idle", progress: 0 },
-  });
+  const [benchStates, setBenchStates] = useState<Record<string, BenchState>>(idleStates);
 
   useEffect(() => {
     const detect = async () => {
@@ -117,13 +127,9 @@ export default function HomePage() {
     setRunning(true);
     setSubmitted(false);
 
-    setBenchStates({
-      rastrigin: { status: "idle", progress: 0 },
-      nbody: { status: "idle", progress: 0 },
-      acrobot: { status: "idle", progress: 0 },
-      mountaincar: { status: "idle", progress: 0 },
-      montecarlo: { status: "idle", progress: 0 },
-    });
+    // Reset ALL benchmarks (a hand-written literal here once omitted cartpole,
+    // which let a stale result leak into a re-run's submission).
+    setBenchStates(idleStates());
 
     try {
       const { BenchmarkRunner } = await import("@/lib/benchmark-runner");
@@ -145,24 +151,14 @@ export default function HomePage() {
         const shader = shaders[bench.key];
         if (!shader) continue;
 
-        setBenchStates((prev) => ({
-          ...prev,
-          [bench.key]: { status: "warmup", progress: 0 },
-        }));
-
-        await new Promise((r) => setTimeout(r, 100));
-
-        setBenchStates((prev) => ({
-          ...prev,
-          [bench.key]: { status: "running", progress: 0 },
-        }));
-
         const result = await runner.run(
           {
             name: bench.name,
             shader,
             populationSize: bench.populationSize,
             dimensions: bench.dimensions,
+            params: [...bench.params],
+            input: bench.input,
             warmupIterations: bench.warmupIterations,
             benchmarkIterations: bench.benchmarkIterations,
           },
@@ -170,6 +166,12 @@ export default function HomePage() {
             setBenchStates((prev) => ({
               ...prev,
               [bench.key]: { ...prev[bench.key]!, status: "running", progress: pct },
+            }));
+          },
+          (phase) => {
+            setBenchStates((prev) => ({
+              ...prev,
+              [bench.key]: { status: phase, progress: 0 },
             }));
           }
         );
@@ -233,6 +235,9 @@ export default function HomePage() {
         screenWidth: window.screen.width,
         screenHeight: window.screen.height,
         isMobile,
+        // Measurement protocol version — v2 rows (batched timing,
+        // high-performance adapter) must not be averaged with v1 rows.
+        benchVersion: 2,
         // Legacy columns (backward compat)
         parallel: rastrigin?.throughput ?? null,
         sequential: nbody?.throughput ?? null,
@@ -245,6 +250,14 @@ export default function HomePage() {
         mountaincar: mountaincar?.throughput ?? null,
         cartpole: cartpole?.throughput ?? null,
         montecarlo: montecarlo?.throughput ?? null,
+        // Batched-submit throughput (8 dispatches per command buffer) —
+        // much less submit-overhead-bound than the per-dispatch numbers
+        rastriginBatched: rastrigin?.batchedThroughput ?? null,
+        nbodyBatched: nbody?.batchedThroughput ?? null,
+        acrobotBatched: acrobot?.batchedThroughput ?? null,
+        mountaincarBatched: mountaincar?.batchedThroughput ?? null,
+        cartpoleBatched: cartpole?.batchedThroughput ?? null,
+        montecarloBatched: montecarlo?.batchedThroughput ?? null,
         // Timing stats
         rastriginMean: rastrigin?.meanTime ?? null,
         rastriginMin: rastrigin?.minTime ?? null,

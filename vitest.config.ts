@@ -7,5 +7,7 @@ export default defineConfig({
   resolve: { alias: { "@": resolve(__dirname, "src") } },
   test: {
     environment: "jsdom",
+    // e2e/ is Playwright's — it must not be collected by vitest.
+    include: ["tests/**/*.test.{js,ts,mjs}"],
   },
 });

@@ -1,8 +1,7 @@
 {
-  "name": "swarm-bench",
-  "version": "0.1.0",
-  "description": "",
-  "main": "index.js",
+  "name": "gpubench",
+  "version": "0.2.0",
+  "description": "Real WebGPU compute benchmarks in the browser — gpubench.dev",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -13,9 +12,9 @@
     "test:e2e": "playwright test",
     "check": "npm run typecheck && npm run lint && npm run test"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": ["webgpu", "benchmark", "wgsl", "kernel-fusion"],
+  "author": "Ahmet Baris Gunaydin",
+  "license": "MIT",
   "dependencies": {
     "@vercel/analytics": "^2.0.1",
     "@vercel/postgres": "^0.10.0",

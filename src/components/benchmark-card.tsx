@@ -6,6 +6,8 @@ interface BenchmarkResult {
   minTime: number;
   maxTime: number;
   stdDev: number;
+  batchedThroughput?: number;
+  batchedMeanTime?: number;
 }
 
 interface BenchmarkCardProps {
@@ -85,6 +87,11 @@ export function BenchmarkCard({ name, description, icon, status, progress, resul
                 {result.throughput.toLocaleString(undefined, { maximumFractionDigits: 0 })}
               </span>
               <span className="text-sm text-bench-muted">gen/s</span>
+              {result.batchedThroughput !== undefined && (
+                <span className="text-xs text-bench-muted/70 ml-2">
+                  {result.batchedThroughput.toLocaleString(undefined, { maximumFractionDigits: 0 })} gen/s batched
+                </span>
+              )}
             </div>
             <div className="grid grid-cols-4 gap-2">
               {[

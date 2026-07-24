@@ -4,11 +4,14 @@
  * Generates fused and unfused transformer shaders for any configuration.
  * Mirrors the pattern from webgpu-kernel-fusion: constants baked at generation time.
  *
- * SOURCE OF TRUTH: ~/sites-shared/shader-gen.js
- * Do not edit the copies at:
- *   - kernelfusion/src/lib/shader-gen.js
- *   - gpubench/src/lib/shader-gen.js
- * Edit here and run `node ~/sites-shared/sync.mjs` to propagate.
+ * NOTE: this copy has DIVERGED from ~/sites-shared/shader-gen.js:
+ *   - exports layerOffsets()
+ *   - unfused Attn/FFN take a separate `residual` binding (7) so the unfused
+ *     chain computes the same function as the fused kernel
+ *   - parallel-fused FFN hidden scratch moved past the output region
+ *     (it used to clobber the first DF floats of token outputs)
+ * Backport these to sites-shared before running sync.mjs again, or the fixes
+ * will be overwritten.
  */
 
 export function generateConfig(D, nHeads, ffnMul, seqLen, nLayers) {
@@ -33,10 +36,10 @@ export function generateConfig(D, nHeads, ffnMul, seqLen, nLayers) {
   return { D, NH: nHeads, HD, DF, SL: seqLen, NL: nLayers, perLayer, totalWeights: perLayer * nLayers };
 }
 
-export function generateFusedShader(cfg) {
-  const { D, NH, HD, DF, SL, NL, perLayer } = cfg;
-
-  // Compute offsets per layer (relative to layer base)
+// Offsets of each weight tensor within one layer's packed block.
+// Shared by all generators and by benchmark code that slices packed weights.
+export function layerOffsets(cfg) {
+  const { D, DF } = cfg;
   const o = {};
   let pos = 0;
   o.LG = pos; pos += D;
@@ -51,6 +54,12 @@ export function generateFusedShader(cfg) {
   o.B1 = pos; pos += DF;
   o.W2 = pos; pos += DF * D;
   o.B2 = pos; pos += D;
+  return o;
+}
+
+export function generateFusedShader(cfg) {
+  const { D, NH, HD, DF, SL, NL, perLayer } = cfg;
+  const o = layerOffsets(cfg);
 
   return /* wgsl */ `
 // FUSED TRANSFORMER — ${NL} layer(s), D=${D}, H=${NH}, FFN=${DF}, SEQ=${SL}
@@ -236,13 +245,14 @@ const D: u32 = ${D}u;
 const NH: u32 = ${NH}u;
 const HD: u32 = ${HD}u;
 
-@group(0) @binding(0) var<storage, read> input: array<f32>;
+@group(0) @binding(0) var<storage, read> input: array<f32>;      // LN1 output
 @group(0) @binding(1) var<storage, read_write> output: array<f32>;
 @group(0) @binding(2) var<storage, read> Wq: array<f32>;
 @group(0) @binding(3) var<storage, read> Wk: array<f32>;
 @group(0) @binding(4) var<storage, read> Wv: array<f32>;
 @group(0) @binding(5) var<storage, read> Wo: array<f32>;
 @group(0) @binding(6) var<uniform> u: vec4<u32>;
+@group(0) @binding(7) var<storage, read> residual: array<f32>;   // pre-LN stream x
 
 @compute @workgroup_size(64)
 fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
@@ -301,7 +311,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
         for (var j = 0u; j < D; j++) { acc += output[base + j] * Wo[j * D + i]; }
         final_out[i] = acc;
     }
-    for (var i = 0u; i < D; i++) { output[base + i] = input[base + i] + final_out[i]; }
+    for (var i = 0u; i < D; i++) { output[base + i] = residual[base + i] + final_out[i]; }
 }`;
 }
 
@@ -311,13 +321,14 @@ export function generateUnfusedFFN(cfg) {
 const D: u32 = ${D}u;
 const DF: u32 = ${DF}u;
 
-@group(0) @binding(0) var<storage, read> input: array<f32>;
+@group(0) @binding(0) var<storage, read> input: array<f32>;      // LN2 output
 @group(0) @binding(1) var<storage, read_write> output: array<f32>;
 @group(0) @binding(2) var<storage, read> W1: array<f32>;
 @group(0) @binding(3) var<storage, read> b1: array<f32>;
 @group(0) @binding(4) var<storage, read> W2: array<f32>;
 @group(0) @binding(5) var<storage, read> b2: array<f32>;
 @group(0) @binding(6) var<uniform> u: vec4<u32>;
+@group(0) @binding(7) var<storage, read> residual: array<f32>;   // post-attention stream x
 
 fn gelu(x: f32) -> f32 {
     let inner = 0.7978845608 * (x + 0.044715 * x * x * x);
@@ -339,7 +350,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     for (var i = 0u; i < D; i++) {
         var acc = b2[i];
         for (var j = 0u; j < DF; j++) { acc += hidden[j] * W2[j * D + i]; }
-        output[base + i] = input[base + i] + acc;
+        output[base + i] = residual[base + i] + acc;
     }
 }`;
 }
@@ -352,21 +363,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
 // ═══════════════════════════════════════════════════════════════
 export function generateParallelFusedShader(cfg, WG = 64) {
   const { D, NH, HD, DF, SL, NL, perLayer } = cfg;
-
-  const o = {};
-  let pos = 0;
-  o.LG = pos; pos += D;
-  o.LB = pos; pos += D;
-  o.WQ = pos; pos += D * D;
-  o.WK = pos; pos += D * D;
-  o.WV = pos; pos += D * D;
-  o.WO = pos; pos += D * D;
-  o.LG2 = pos; pos += D;
-  o.LB2 = pos; pos += D;
-  o.W1 = pos; pos += D * DF;
-  o.B1 = pos; pos += DF;
-  o.W2 = pos; pos += DF * D;
-  o.B2 = pos; pos += D;
+  const o = layerOffsets(cfg);
 
   return /* wgsl */ `
 // PARALLEL FUSED TRANSFORMER — ${NL}L, D=${D}, H=${NH}, FFN=${DF}, SEQ=${SL}, WG=${WG}
@@ -545,18 +542,20 @@ fn main(
             // shared_buf = LN2 output
 
             // ══════ FFN up-projection (parallel over DF) ══════
-            // Each thread computes its slice of the hidden dim
+            // Each thread computes its slice of the hidden dim.
+            // Scratch lives PAST the SL*D output region — writing to out[0..DF)
+            // would clobber the already-final outputs of the first tokens.
             for (var i = tid; i < DF; i += WG) {
                 var a = W[LB + ${o.B1}u + i];
                 for (var j = 0u; j < D; j++) { a += shared_buf[j] * W[LB + ${o.W1}u + j * DF + i]; }
-                out[i] = gelu(a);  // temp: store FFN hidden in output buffer
+                out[${SL * D}u + i] = gelu(a);
             }
             workgroupBarrier();
 
             // ══════ FFN down-projection + residual (parallel over D) ══════
             for (var i = tid; i < D; i += WG) {
                 var a = W[LB + ${o.B2}u + i];
-                for (var j = 0u; j < DF; j++) { a += out[j] * W[LB + ${o.W2}u + j * D + i]; }
+                for (var j = 0u; j < DF; j++) { a += out[${SL * D}u + j] * W[LB + ${o.W2}u + j * D + i]; }
                 shared_x[i] = shared_x[i] + a;  // residual 2
             }
             workgroupBarrier();
@@ -576,21 +575,7 @@ fn main(
 // ═══════════════════════════════════════════════════════════════
 export function generateF16FusedShader(cfg) {
   const { D, NH, HD, DF, SL, NL, perLayer } = cfg;
-
-  const o = {};
-  let pos = 0;
-  o.LG = pos; pos += D;
-  o.LB = pos; pos += D;
-  o.WQ = pos; pos += D * D;
-  o.WK = pos; pos += D * D;
-  o.WV = pos; pos += D * D;
-  o.WO = pos; pos += D * D;
-  o.LG2 = pos; pos += D;
-  o.LB2 = pos; pos += D;
-  o.W1 = pos; pos += D * DF;
-  o.B1 = pos; pos += DF;
-  o.W2 = pos; pos += DF * D;
-  o.B2 = pos; pos += D;
+  const o = layerOffsets(cfg);
 
   // Same structure as fused but accumulate in f32, load weights as f16
   // Note: WGSL f16 requires 'enable f16;' and shader-f16 feature

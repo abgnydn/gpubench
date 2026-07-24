@@ -62,10 +62,10 @@ Deploy: `node ~/sites-shared/deploy.mjs gpubench` → `vercel deploy --prod`.
 - TS config has `strict: true` + `noUncheckedIndexedAccess: true`, so lookups
   like `SITES[CROSSLINKS.gpubench[0]]` need a non-null assertion (`!`) on the
   indexer — see `COMPANION_FLAGSHIP` in `page.tsx`.
-- `src/lib/shader-gen.js` has two pre-existing unused-variable lint errors
-  (same file as kernelfusion — shared via the sync).
-- Several `tests/transformer-*.test.*` files are empty placeholders that
-  vitest reports as "no test suite found". Harmless but noisy.
+- `src/lib/shader-gen.js` has DIVERGED from `~/sites-shared/shader-gen.js`
+  (residual bindings on unfused Attn/FFN, parallel-fused scratch fix,
+  `layerOffsets` export). Backport to sites-shared before running the sync
+  script again, or the fixes get overwritten.
 - Not yet migrated to Cloudflare Pages — the only site still on Vercel
   because of `/api/*`. Future: port endpoints to CF Workers + D1 for a full
   constellation migration.

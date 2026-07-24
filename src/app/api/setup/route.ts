@@ -1,7 +1,9 @@
 import { sql } from "@/lib/db";
 import { NextResponse } from "next/server";
 
-export async function GET(request: Request) {
+// Migrations are a side effect, so this is a POST. (It used to be a GET —
+// bearer-protected, but side-effecting GETs are prefetcher/link-scanner bait.)
+export async function POST(request: Request) {
   const authHeader = request.headers.get("authorization");
   const secret = process.env["SETUP_SECRET"];
 
@@ -65,6 +67,16 @@ export async function GET(request: Request) {
       `ALTER TABLE benchmark_runs ADD COLUMN IF NOT EXISTS montecarlo_min REAL`,
       `ALTER TABLE benchmark_runs ADD COLUMN IF NOT EXISTS montecarlo_max REAL`,
       `ALTER TABLE benchmark_runs ADD COLUMN IF NOT EXISTS montecarlo_std REAL`,
+      // v2 measurement protocol: batched-submit timing + protocol version.
+      // v1 rows (bench_version=1) time one dispatch per submit and must not
+      // be aggregated with v2 rows.
+      `ALTER TABLE benchmark_runs ADD COLUMN IF NOT EXISTS bench_version INT DEFAULT 1`,
+      `ALTER TABLE benchmark_runs ADD COLUMN IF NOT EXISTS rastrigin_batched_gps REAL`,
+      `ALTER TABLE benchmark_runs ADD COLUMN IF NOT EXISTS nbody_batched_gps REAL`,
+      `ALTER TABLE benchmark_runs ADD COLUMN IF NOT EXISTS acrobot_batched_gps REAL`,
+      `ALTER TABLE benchmark_runs ADD COLUMN IF NOT EXISTS mountaincar_batched_gps REAL`,
+      `ALTER TABLE benchmark_runs ADD COLUMN IF NOT EXISTS cartpole_batched_gps REAL`,
+      `ALTER TABLE benchmark_runs ADD COLUMN IF NOT EXISTS montecarlo_batched_gps REAL`,
       // Device telemetry from P2P demos
       `CREATE TABLE IF NOT EXISTS device_sessions (
         id              SERIAL PRIMARY KEY,
@@ -103,6 +115,11 @@ export async function GET(request: Request) {
         screen_height   INT DEFAULT 0,
         is_mobile       BOOLEAN DEFAULT false
       )`,
+      // Transformer bench: fair single-submit baseline + equivalence check
+      // (after the CREATE so the ALTERs always have a table to hit).
+      `ALTER TABLE transformer_runs ADD COLUMN IF NOT EXISTS unfused_batched_ms REAL`,
+      `ALTER TABLE transformer_runs ADD COLUMN IF NOT EXISTS speedup_batched REAL`,
+      `ALTER TABLE transformer_runs ADD COLUMN IF NOT EXISTS equiv_max_diff REAL`,
     ];
 
     for (const m of migrations) {
