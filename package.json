@@ -12,7 +12,12 @@
     "test:e2e": "playwright test",
     "check": "npm run typecheck && npm run lint && npm run test"
   },
-  "keywords": ["webgpu", "benchmark", "wgsl", "kernel-fusion"],
+  "keywords": [
+    "webgpu",
+    "benchmark",
+    "wgsl",
+    "kernel-fusion"
+  ],
   "author": "Ahmet Baris Gunaydin",
   "license": "MIT",
   "dependencies": {
@@ -23,6 +28,7 @@
     "react-dom": "^19.2.4"
   },
   "devDependencies": {
+    "@opennextjs/cloudflare": "^1.20.2",
     "@playwright/test": "^1.59.1",
     "@tailwindcss/postcss": "^4.2.2",
     "@types/node": "^25.5.0",
@@ -30,11 +36,13 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",
     "@webgpu/types": "^0.1.69",
+    "esbuild": "^0.27.7",
     "jsdom": "^29.0.1",
     "postcss": "^8.5.8",
     "tailwindcss": "^4.2.2",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.57.2",
-    "vitest": "^4.1.2"
+    "vitest": "^4.1.2",
+    "wrangler": "^4.114.0"
   }
 }
