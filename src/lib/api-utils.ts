@@ -38,9 +38,12 @@ export function bool(v: unknown): boolean {
 }
 
 /** Median of the finite numbers in `values`; null when there are none.
+ *  NULL/undefined/empty entries are ignored (as SQL aggregates ignore NULL —
+ *  `Number(null)` is 0 and would drag the median toward zero otherwise).
  *  D1/SQLite has no percentile_cont, so median aggregations live in JS. */
 export function median(values: unknown[]): number | null {
   const nums = values
+    .filter((v) => v !== null && v !== undefined && v !== "")
     .map((v) => (typeof v === "number" ? v : Number(v)))
     .filter((v) => Number.isFinite(v))
     .sort((a, b) => a - b);

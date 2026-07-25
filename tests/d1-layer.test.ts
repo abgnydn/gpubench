@@ -102,27 +102,32 @@ describe("results route on D1", () => {
     expect(count.c).toBe(1); // nothing extra stored
   });
 
-  it("aggregates medians in GET", async () => {
+  it("aggregates medians in GET, ignoring NULL columns like SQL does", async () => {
     const { POST, GET } = await import("@/app/api/results/route");
     // second plausible run with a different score → median of [100, 300] = 200
     await POST(jsonRequest("http://test/api/results", {
       ...validSubmission, score: 300, rastrigin: 200, rastriginMean: 5,
       rastriginMin: 4, rastriginMax: 7, rastriginStd: 0.2, rastriginBatched: 800,
     }));
+    // legacy-style row: score only, every per-benchmark column NULL — must
+    // not drag per-benchmark medians toward 0 (Number(null) === 0 trap)
+    await POST(jsonRequest("http://test/api/results", {
+      gpuName: "Legacy GPU", gpuVendor: "old", gpuArch: "", score: 200,
+    }));
     const res = await GET(new Request("http://test/api/results"));
     const body = await res.json();
-    expect(body.total).toBe(2);
+    expect(body.total).toBe(3);
     expect(body.averages.avg_score).toBe(200);
-    expect(body.averages.avg_rastrigin).toBe(150);
+    expect(body.averages.avg_rastrigin).toBe(150); // NULLs ignored
     expect(body.topGpus[0].runs).toBe(2);
-    expect(body.recent).toHaveLength(2);
+    expect(body.recent).toHaveLength(3);
   });
 
   it("paginates with translated $n placeholders", async () => {
     const { GET } = await import("@/app/api/results/route");
     const res = await GET(new Request("http://test/api/results?all=true&sort=score&dir=desc"));
     const body = await res.json();
-    expect(body.total).toBe(2);
+    expect(body.total).toBe(3);
     expect(body.rows[0].score).toBe(300);
   });
 });
