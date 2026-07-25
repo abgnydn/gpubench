@@ -1,6 +1,8 @@
+// @vitest-environment node
 /**
  * End-to-end test of the D1 data layer and API routes against a real SQLite
  * database (node:sqlite) standing in for D1 — same dialect, same semantics.
+ * (node environment: vite refuses to bundle node:sqlite for jsdom/client.)
  * Verifies: schema self-ensure (fresh CREATE + ALTER upgrade of a legacy
  * table), the sql shim ($n translation, boolean coercion), submission
  * validation, and the JS median aggregations.
