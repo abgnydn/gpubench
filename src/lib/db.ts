@@ -1,75 +1,92 @@
-// Single source of truth for the Postgres connection.
+// D1-backed data layer.
 //
-// `@vercel/postgres` lazy-loads its connection string from POSTGRES_URL on
-// first use. Our DB is provisioned through the Vercel Marketplace (Neon),
-// which injects STORAGE_POSTGRES_URL — so we mirror it into POSTGRES_URL
-// on first query. The legacy POSTGRES_URL previously seeded on this project
-// pointed at a dropped Vercel Postgres instance and was the reason the live
-// API silently returned empty data.
+// Production runs on Cloudflare Workers (OpenNext) with the D1 binding `DB`
+// — that database holds all historical runs. The old @vercel/postgres layer
+// in this repo predated the (previously unpushed) D1 port and never matched
+// production; deploying it took the data APIs down on 2026-07-24.
 //
-// The env check is deliberately lazy (not at module load): API route modules
-// get evaluated during `next build`, and a fresh clone without Vercel env
-// should still build and run the non-DB parts of the site.
+// The exported `sql` keeps the @vercel/postgres call shape — tagged template
+// plus `sql.query(text, [$1-style params])` — so route code is unchanged.
+// Postgres-only SQL (percentile_cont, ::numeric, ILIKE) is not supported;
+// those aggregations live in JS in the routes.
+//
+// Schema is self-ensuring: once per isolate, tables are created if missing
+// and columns are diffed via PRAGMA table_info and added (SQLite has no
+// ADD COLUMN IF NOT EXISTS). Deploys never need a separate migration step.
 
-import { sql as vercelSql } from "@vercel/postgres";
-import { MIGRATIONS } from "./migrations";
+import { getCloudflareContext } from "@opennextjs/cloudflare";
+import { TABLES } from "./db-schema";
 
-let envChecked = false;
+type Bindable = string | number | boolean | null | undefined;
 
-function ensureEnv(): void {
-  if (envChecked) return;
-  const live = process.env["STORAGE_POSTGRES_URL"];
-  if (!live) {
+interface D1Rows {
+  results?: Record<string, unknown>[];
+}
+interface D1Prepared {
+  bind(...values: unknown[]): D1Prepared;
+  all(): Promise<D1Rows>;
+}
+export interface D1Like {
+  prepare(query: string): D1Prepared;
+}
+
+function getDb(): D1Like {
+  const { env } = getCloudflareContext() as unknown as { env: Record<string, unknown> };
+  const db = env["DB"] as D1Like | undefined;
+  if (!db) {
     throw new Error(
-      "STORAGE_POSTGRES_URL is not set. It lives in the deployment platform's secrets; locally pull it into .env.local.",
+      "D1 binding `DB` is not available. Outside the Worker (plain `next dev`) the data APIs have no database; deploy config lives in wrangler.jsonc.",
     );
   }
-  process.env["POSTGRES_URL"] = live;
-  process.env["POSTGRES_URL_NON_POOLING"] =
-    process.env["STORAGE_POSTGRES_URL_NON_POOLING"] ?? live;
-  envChecked = true;
+  return db;
 }
 
-// Self-healing schema: deploys are decoupled from migrations (no git
-// integration, secrets only exist on the worker), so when new code hits a
-// database that hasn't been migrated yet, the first "column/relation does
-// not exist" error replays the idempotent migration list once and retries.
-// After that first heal the schema is current for the lifetime of the DB.
-let healAttempted = false;
+let ensured: Promise<void> | null = null;
 
-function isSchemaError(err: unknown): boolean {
-  return err instanceof Error && /does not exist/.test(err.message);
-}
-
-async function withSchemaHeal<T>(exec: () => Promise<T>): Promise<T> {
-  try {
-    return await exec();
-  } catch (err) {
-    if (!isSchemaError(err) || healAttempted) throw err;
-    healAttempted = true;
-    console.warn("[db] schema out of date — applying idempotent migrations");
-    for (const m of MIGRATIONS) {
-      await vercelSql.query(m);
+function ensureSchema(db: D1Like): Promise<void> {
+  ensured ??= (async () => {
+    for (const [name, table] of Object.entries(TABLES)) {
+      await db.prepare(table.create).all();
+      const info = await db.prepare(`PRAGMA table_info(${name})`).all();
+      const existing = new Set((info.results ?? []).map((r) => String(r["name"])));
+      for (const [col, type] of Object.entries(table.columns)) {
+        if (!existing.has(col)) {
+          await db.prepare(`ALTER TABLE ${name} ADD COLUMN ${col} ${type}`).all();
+        }
+      }
     }
-    return await exec();
+  })().catch((err: unknown) => {
+    ensured = null; // retry on the next query instead of caching the failure
+    throw err;
+  });
+  return ensured;
+}
+
+async function run(text: string, params: Bindable[]): Promise<{ rows: Record<string, unknown>[] }> {
+  const db = getDb();
+  await ensureSchema(db);
+  const bound = params.map((p) =>
+    p === undefined ? null : typeof p === "boolean" ? (p ? 1 : 0) : p,
+  );
+  const res = await db.prepare(text).bind(...bound).all();
+  return { rows: res.results ?? [] };
+}
+
+function tag(strings: TemplateStringsArray, ...values: Bindable[]) {
+  let text = strings[0] ?? "";
+  for (let i = 0; i < values.length; i++) {
+    text += `?${i + 1}${strings[i + 1] ?? ""}`;
   }
+  return run(text, values);
 }
 
-// `sql` is used both as a tagged template (apply) and via `sql.query` (get) —
-// the proxy runs the env check on first touch either way, and every query
-// goes through the schema-heal wrapper.
-export const sql: typeof vercelSql = new Proxy(vercelSql, {
-  apply(target, thisArg, args) {
-    ensureEnv();
-    return withSchemaHeal(() => Reflect.apply(target, thisArg, args));
-  },
-  get(target, prop, receiver) {
-    ensureEnv();
-    const value = Reflect.get(target, prop, receiver);
-    if (prop === "query" && typeof value === "function") {
-      return (...args: unknown[]) =>
-        withSchemaHeal(() => (value as (...a: unknown[]) => Promise<unknown>).apply(target, args));
-    }
-    return typeof value === "function" ? value.bind(target) : value;
-  },
+export const sql = Object.assign(tag, {
+  // $1/$2 placeholders translate directly to SQLite's ?1/?2.
+  query: (text: string, params: Bindable[] = []) =>
+    run(text.replace(/\$(\d+)/g, "?$1"), params),
 });
+
+/** Used by POST /api/setup — any query triggers the schema self-ensure. */
+export async function ensureDatabase(): Promise<void> {
+  await run("SELECT 1 AS ok", []);
+}

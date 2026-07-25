@@ -1,6 +1,6 @@
 import { sql } from "@/lib/db";
 import { NextResponse } from "next/server";
-import { bool, createRateLimiter, getClientIp, num, parseUA, str, timingStatsPlausible } from "@/lib/api-utils";
+import { bool, createRateLimiter, getClientIp, median, num, parseUA, roundTo, str, timingStatsPlausible } from "@/lib/api-utils";
 
 const isRateLimited = createRateLimiter(10);
 
@@ -136,34 +136,53 @@ export async function GET(request: Request) {
       return response;
     }
 
-    const totalResult = await sql`SELECT COUNT(*) as count FROM benchmark_runs`;
-    const total = Number(totalResult.rows[0]?.["count"] ?? 0);
-
-    // Aggregations use MEDIAN (percentile_cont 0.5), not mean.
-    // Means in this dataset are right-skewed by a long tail of high-end devices
-    // (e.g., Acrobot mean 105 vs median 40 — 2.6× skew). Medians describe the
-    // typical device experience. JSON field names retain the `avg_` prefix
-    // for back-compat with the frontend; rename pending.
-    const avgResult = await sql`
-      SELECT
-        ROUND(percentile_cont(0.5) WITHIN GROUP (ORDER BY rastrigin_gps)::numeric, 1) as avg_rastrigin,
-        ROUND(percentile_cont(0.5) WITHIN GROUP (ORDER BY nbody_gps)::numeric, 1) as avg_nbody,
-        ROUND(percentile_cont(0.5) WITHIN GROUP (ORDER BY acrobot_gps)::numeric, 1) as avg_acrobot,
-        ROUND(percentile_cont(0.5) WITHIN GROUP (ORDER BY mountaincar_gps)::numeric, 1) as avg_mountaincar,
-        ROUND(percentile_cont(0.5) WITHIN GROUP (ORDER BY cartpole_gps)::numeric, 1) as avg_cartpole,
-        ROUND(percentile_cont(0.5) WITHIN GROUP (ORDER BY montecarlo_gps)::numeric, 1) as avg_montecarlo,
-        ROUND(percentile_cont(0.5) WITHIN GROUP (ORDER BY score)::numeric, 0) as avg_score
+    // Aggregations use MEDIAN, not mean. Means in this dataset are
+    // right-skewed by a long tail of high-end devices (e.g., Acrobot mean
+    // 105 vs median 40 — 2.6× skew). Medians describe the typical device
+    // experience. JSON field names retain the `avg_` prefix for back-compat
+    // with the frontend; rename pending. D1/SQLite has no percentile_cont,
+    // so medians are computed in JS from one scan (dataset is ~1k rows).
+    const allRuns = await sql`
+      SELECT gpu_name, gpu_vendor, gpu_arch, score,
+             rastrigin_gps, nbody_gps, acrobot_gps, mountaincar_gps, cartpole_gps, montecarlo_gps
       FROM benchmark_runs
     `;
+    const runs = allRuns.rows;
+    const total = runs.length;
 
-    const topGpus = await sql`
-      SELECT gpu_name, gpu_vendor, gpu_arch, COUNT(*) as runs,
-             ROUND(percentile_cont(0.5) WITHIN GROUP (ORDER BY score)::numeric, 0) as avg_score
-      FROM benchmark_runs
-      GROUP BY gpu_name, gpu_vendor, gpu_arch
-      ORDER BY avg_score DESC
-      LIMIT 10
-    `;
+    const medOf = (col: string, digits: number) =>
+      roundTo(median(runs.map((r) => r[col])), digits);
+
+    const averages = {
+      avg_rastrigin: medOf("rastrigin_gps", 1),
+      avg_nbody: medOf("nbody_gps", 1),
+      avg_acrobot: medOf("acrobot_gps", 1),
+      avg_mountaincar: medOf("mountaincar_gps", 1),
+      avg_cartpole: medOf("cartpole_gps", 1),
+      avg_montecarlo: medOf("montecarlo_gps", 1),
+      avg_score: medOf("score", 0),
+    };
+
+    const gpuGroups = new Map<string, { gpu_name: unknown; gpu_vendor: unknown; gpu_arch: unknown; scores: unknown[] }>();
+    for (const r of runs) {
+      const key = `${r["gpu_name"]}|${r["gpu_vendor"]}|${r["gpu_arch"]}`;
+      let g = gpuGroups.get(key);
+      if (!g) {
+        g = { gpu_name: r["gpu_name"], gpu_vendor: r["gpu_vendor"], gpu_arch: r["gpu_arch"], scores: [] };
+        gpuGroups.set(key, g);
+      }
+      g.scores.push(r["score"]);
+    }
+    const topGpus = [...gpuGroups.values()]
+      .map((g) => ({
+        gpu_name: g.gpu_name,
+        gpu_vendor: g.gpu_vendor,
+        gpu_arch: g.gpu_arch,
+        runs: g.scores.length,
+        avg_score: roundTo(median(g.scores), 0),
+      }))
+      .sort((a, b) => (b.avg_score ?? 0) - (a.avg_score ?? 0))
+      .slice(0, 10);
 
     const recentResult = await sql`
       SELECT gpu_name, score, browser, os, backend, is_mobile, created_at
@@ -174,8 +193,8 @@ export async function GET(request: Request) {
 
     const response = NextResponse.json({
       total,
-      averages: avgResult.rows[0] ?? {},
-      topGpus: topGpus.rows,
+      averages,
+      topGpus,
       recent: recentResult.rows,
     });
 

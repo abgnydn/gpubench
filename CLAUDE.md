@@ -9,13 +9,15 @@ no cherry-picking.
 
 ## Architecture
 
-Next.js 16 with App Router + `/api/*` routes backed by Neon Postgres
-(`STORAGE_POSTGRES_URL`). Deploys to **Cloudflare Workers via OpenNext** —
-config lives in-repo (`wrangler.jsonc` + `open-next.config.ts`); secrets
-(`STORAGE_POSTGRES_URL`, `SETUP_SECRET`) live on the worker and persist
-across deploys. Schema migrations are self-healing: any "column does not
-exist" error replays the idempotent list in `src/lib/migrations.js` once
-(see `src/lib/db.ts`), so deploy order never matters.
+Next.js 16 with App Router + `/api/*` routes backed by **Cloudflare D1**
+(binding `DB` — this is the database with all historical runs). Deploys to
+**Cloudflare Workers via OpenNext**; config lives in-repo (`wrangler.jsonc`
++ `open-next.config.ts`). `SETUP_SECRET` is a worker secret and persists
+across deploys. The schema is self-ensuring (src/lib/db.ts diffs PRAGMA
+table_info against src/lib/db-schema.ts once per isolate), so deploys never
+need a migration step. The `sql` export keeps the old @vercel/postgres call
+shape; Postgres-only SQL (percentile_cont, ILIKE, ::numeric) is banned —
+median aggregations live in JS in the routes.
 
 - `src/app/page.tsx` — main benchmark page. `BENCHMARKS` array (top of file)
   drives the card grid. Companion-projects section at the bottom renders
@@ -70,5 +72,6 @@ Direct: `npx opennextjs-cloudflare build && npx wrangler deploy`.
   (residual bindings on unfused Attn/FFN, parallel-fused scratch fix,
   `layerOffsets` export). Backport to sites-shared before running the sync
   script again, or the fixes get overwritten.
-- The worker has an unused D1 binding (`DB`) provisioned for a possible
-  future Postgres → D1 migration; the app still uses Neon Postgres.
+- 2026-07-24 incident: production had been running an unpushed D1 port
+  while this repo still had the Neon/Postgres layer; deploying the repo took
+  the data APIs down until the repo was ported to D1. Keep repo == prod.

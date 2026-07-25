@@ -37,6 +37,32 @@ export function bool(v: unknown): boolean {
   return v === true;
 }
 
+/** Median of the finite numbers in `values`; null when there are none.
+ *  NULL/undefined/empty entries are ignored (as SQL aggregates ignore NULL —
+ *  `Number(null)` is 0 and would drag the median toward zero otherwise).
+ *  D1/SQLite has no percentile_cont, so median aggregations live in JS. */
+export function median(values: unknown[]): number | null {
+  const nums = values
+    .filter((v) => v !== null && v !== undefined && v !== "")
+    .map((v) => (typeof v === "number" ? v : Number(v)))
+    .filter((v) => Number.isFinite(v))
+    .sort((a, b) => a - b);
+  if (nums.length === 0) return null;
+  const mid = nums.length >> 1;
+  return nums.length % 2 === 0 ? (nums[mid - 1]! + nums[mid]!) / 2 : nums[mid]!;
+}
+
+export function roundTo(v: number | null, digits: number): number | null {
+  if (v === null) return null;
+  const f = 10 ** digits;
+  return Math.round(v * f) / f;
+}
+
+/** D1 stores booleans as 0/1; older rows may hold true/false. */
+export function truthyFlag(v: unknown): boolean {
+  return v === true || v === 1 || v === "1";
+}
+
 export function getClientIp(request: Request): string {
   const forwarded = request.headers.get("x-forwarded-for");
   return forwarded?.split(",")[0]?.trim() ?? "unknown";
