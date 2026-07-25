@@ -1,10 +1,10 @@
 {
   "name": "gpubench",
   "version": "0.2.0",
-  "description": "Real WebGPU compute benchmarks in the browser — gpubench.dev",
+  "description": "Real WebGPU compute benchmarks in the browser \u2014 gpubench.dev",
   "scripts": {
     "dev": "next dev",
-    "build": "next build && node scripts/migrate.mjs",
+    "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src/",
@@ -22,13 +22,12 @@
   "license": "MIT",
   "dependencies": {
     "@vercel/analytics": "^2.0.1",
-    "@vercel/postgres": "^0.10.0",
     "next": "^16.2.1",
     "react": "^19.2.4",
-    "react-dom": "^19.2.4"
+    "react-dom": "^19.2.4",
+    "@opennextjs/cloudflare": "^1.20.2"
   },
   "devDependencies": {
-    "@opennextjs/cloudflare": "^1.20.2",
     "@playwright/test": "^1.59.1",
     "@tailwindcss/postcss": "^4.2.2",
     "@types/node": "^25.5.0",

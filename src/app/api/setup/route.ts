@@ -1,5 +1,4 @@
-import { sql } from "@/lib/db";
-import { MIGRATIONS } from "@/lib/migrations";
+import { ensureDatabase, sql } from "@/lib/db";
 import { NextResponse } from "next/server";
 
 // Migrations are a side effect, so this is a POST. (It used to be a GET —
@@ -27,11 +26,10 @@ export async function POST(request: Request) {
   }
 
   try {
-    for (const m of MIGRATIONS) {
-      await sql.query(m);
-    }
-
-    return NextResponse.json({ ok: true, message: "Migrations applied", columns_added: MIGRATIONS.length });
+    // Schema is self-ensuring on every query path (see src/lib/db.ts);
+    // this endpoint remains as an explicit manual trigger.
+    await ensureDatabase();
+    return NextResponse.json({ ok: true, message: "Schema ensured" });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     return NextResponse.json({ error: "Migration failed", detail: message }, { status: 500 });

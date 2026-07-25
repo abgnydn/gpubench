@@ -1,6 +1,6 @@
 import { sql } from "@/lib/db";
 import { NextResponse } from "next/server";
-import { createRateLimiter, getClientIp, num, parseUA, str } from "@/lib/api-utils";
+import { createRateLimiter, getClientIp, median, num, parseUA, roundTo, str, truthyFlag } from "@/lib/api-utils";
 
 const isRateLimited = createRateLimiter(10);
 
@@ -111,15 +111,9 @@ export async function GET(request: Request) {
     // Aggregate via MEDIAN (not mean) and filter Safari measurement
     // artifacts (speedups > 1000× come from the unfused baseline stalling
     // on Safari's WebGPU, not actual device performance — they are real
-    // numbers that describe the wrong thing). Field name `avgSpeedup`
-    // kept for API back-compat but values are now medians.
-    const topGpus = await sql`
-      SELECT gpu_name, COUNT(*) as runs,
-             ROUND(percentile_cont(0.5) WITHIN GROUP (ORDER BY speedup_parallel)::numeric, 1) as avg_speedup
-      FROM transformer_runs WHERE speedup_parallel BETWEEN 1 AND 1000
-      GROUP BY gpu_name ORDER BY avg_speedup DESC LIMIT 10
-    `;
-
+    // numbers that describe the wrong thing). Field names `avg_speedup` /
+    // `avgSpeedup` kept for API back-compat but values are medians.
+    // D1/SQLite has no percentile_cont, so aggregation happens in JS below.
     const allRows = await sql`
       SELECT gpu_name, gpu_vendor, speedup_parallel, tokens_per_sec, is_mobile, browser
       FROM transformer_runs
@@ -127,6 +121,7 @@ export async function GET(request: Request) {
     `;
 
     const byVendor: Record<string, { speedups: number[]; peak: number }> = {};
+    const byGpu = new Map<string, number[]>();
     let mobileCount = 0;
     let tpsSum = 0;
     let tpsCount = 0;
@@ -136,14 +131,15 @@ export async function GET(request: Request) {
     for (const row of allRows.rows) {
       const speedup = Number(row["speedup_parallel"] ?? 0);
       const tps = Number(row["tokens_per_sec"] ?? 0);
-      const bucket = bucketVendor(
-        String(row["gpu_name"] ?? ""),
-        String(row["gpu_vendor"] ?? ""),
-      );
+      const gpuName = String(row["gpu_name"] ?? "");
+      const bucket = bucketVendor(gpuName, String(row["gpu_vendor"] ?? ""));
       if (!byVendor[bucket]) byVendor[bucket] = { speedups: [], peak: 0 };
       byVendor[bucket].speedups.push(speedup);
       if (speedup > byVendor[bucket].peak) byVendor[bucket].peak = speedup;
-      if (row["is_mobile"] === true) mobileCount++;
+      byGpu.set(gpuName, [...(byGpu.get(gpuName) ?? []), speedup]);
+      // D1 stores booleans as 0/1 (the old `=== true` check silently
+      // undercounted mobile as zero)
+      if (truthyFlag(row["is_mobile"])) mobileCount++;
       if (Number.isFinite(tps) && tps > 0) {
         tpsSum += tps;
         tpsCount++;
@@ -153,27 +149,27 @@ export async function GET(request: Request) {
       browserCounts[browser] = (browserCounts[browser] ?? 0) + 1;
     }
 
-    function median(xs: number[]): number {
-      if (xs.length === 0) return 0;
-      const sorted = [...xs].sort((a, b) => a - b);
-      const mid = sorted.length >> 1;
-      return sorted.length % 2 === 0
-        ? (sorted[mid - 1]! + sorted[mid]!) / 2
-        : sorted[mid]!;
-    }
-
     const vendorAggregates = Object.entries(byVendor)
       .map(([name, v]) => ({
         name,
         runs: v.speedups.length,
-        avgSpeedup: Math.round(median(v.speedups)),  // field name kept for back-compat; values are medians
+        avgSpeedup: Math.round(median(v.speedups) ?? 0),  // field name kept for back-compat; values are medians
         peakSpeedup: Math.round(v.peak),
       }))
       .sort((a, b) => b.avgSpeedup - a.avgSpeedup);
 
+    const topGpus = [...byGpu.entries()]
+      .map(([gpu_name, speedups]) => ({
+        gpu_name,
+        runs: speedups.length,
+        avg_speedup: roundTo(median(speedups), 1),
+      }))
+      .sort((a, b) => (b.avg_speedup ?? 0) - (a.avg_speedup ?? 0))
+      .slice(0, 10);
+
     const response = NextResponse.json({
       total,
-      topGpus: topGpus.rows,
+      topGpus,
       vendors: vendorAggregates,
       mobile: {
         runs: mobileCount,

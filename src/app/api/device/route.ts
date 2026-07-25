@@ -1,6 +1,6 @@
 import { sql } from "@/lib/db";
 import { NextResponse } from "next/server";
-import { createRateLimiter, getClientIp, num, parseUA, str } from "@/lib/api-utils";
+import { createRateLimiter, getClientIp, median, num, parseUA, roundTo, str } from "@/lib/api-utils";
 
 const isRateLimited = createRateLimiter(30); // generous — demos POST every 5s
 
@@ -71,7 +71,8 @@ export async function GET(request: Request) {
       const filterParam = searchParams.get("filter");
       let whereSQL = "";
       if (filterParam === "p2p") {
-        whereSQL = "WHERE workload NOT ILIKE '%zero-tvm%'";
+        // SQLite LIKE is case-insensitive for ASCII, so no ILIKE needed
+        whereSQL = "WHERE workload NOT LIKE '%zero-tvm%'";
       }
 
       const totalResult = await sql.query(
@@ -112,16 +113,38 @@ export async function GET(request: Request) {
     const devices = Number(uniqueDevices.rows[0]?.["count"] ?? 0);
 
     // Median, not mean — keeps `avg_speed` field name for back-compat.
-    const byWorkload = await sql`
-      SELECT workload, COUNT(*) as reports,
-             COUNT(DISTINCT device_id) as devices,
-             ROUND(MAX(fitness)::numeric, 4) as peak_fitness,
-             ROUND(percentile_cont(0.5) WITHIN GROUP (ORDER BY speed)::numeric, 1) as avg_speed,
-             MAX(gen) as max_gen
-      FROM device_sessions
-      GROUP BY workload
-      ORDER BY reports DESC
+    // D1/SQLite has no percentile_cont; aggregate in JS (dataset ~1k rows).
+    const sessionRows = await sql`
+      SELECT workload, device_id, fitness, speed, gen FROM device_sessions
     `;
+    const groups = new Map<string, { reports: number; devices: Set<unknown>; fitness: number[]; speeds: unknown[]; gens: number[] }>();
+    for (const r of sessionRows.rows) {
+      const key = String(r["workload"] ?? "");
+      let g = groups.get(key);
+      if (!g) {
+        g = { reports: 0, devices: new Set(), fitness: [], speeds: [], gens: [] };
+        groups.set(key, g);
+      }
+      g.reports++;
+      g.devices.add(r["device_id"]);
+      const fit = Number(r["fitness"]);
+      if (Number.isFinite(fit)) g.fitness.push(fit);
+      g.speeds.push(r["speed"]);
+      const gen = Number(r["gen"]);
+      if (Number.isFinite(gen)) g.gens.push(gen);
+    }
+    const byWorkload = {
+      rows: [...groups.entries()]
+        .map(([workload, g]) => ({
+          workload,
+          reports: g.reports,
+          devices: g.devices.size,
+          peak_fitness: g.fitness.length ? roundTo(Math.max(...g.fitness), 4) : null,
+          avg_speed: roundTo(median(g.speeds), 1),
+          max_gen: g.gens.length ? Math.max(...g.gens) : null,
+        }))
+        .sort((a, b) => b.reports - a.reports),
+    };
 
     const recent = await sql`
       SELECT device_name, gpu, workload, fitness, gen, speed, browser, os, is_mobile, created_at
