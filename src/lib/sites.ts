@@ -1,13 +1,16 @@
 // ═══════════════════════════════════════════════════════════════════════
-// sites.ts — cross-project links & metadata. DO NOT EDIT.
+// sites.ts — cross-project links & metadata. GENERATED. DO NOT EDIT.
 //
-// This is a copy of sites-shared/generated/sites.json, which build-sites.mjs
-// renders from facts.json. Every number below traces to a fact id there.
-// Hand-editing this file is how one inverted comparison reached four live
-// surfaces. To change anything: fix facts.json or sites.source.json, run
-// `node bin/build-sites.mjs` in sites-shared, then resync with
-//   cp ~/dev/sites-shared/generated/sites.json <this file's data>
-// keeping the interface and CROSSLINKS/AUTHOR/SAME_AS tail below intact.
+// Written by sites-shared/bin/sync.mjs from sites-shared/generated/sites.json,
+// which build-sites.mjs renders from facts.json. Every number below traces to
+// a fact id there. To change anything, edit the authority and resync:
+//
+//   cd ~/dev/sites-shared && node bin/build-sites.mjs && node bin/sync.mjs
+//
+// Editing this file by hand is how three generations of it were live at once —
+// one site published the flagship comparison with the sign inverted. Resyncing
+// it by hand is how one fact change cost four manual resyncs on 2026-08-15.
+// Both paths are closed: this file is output.
 //
 // Schema:
 //   SITES[key]: url, domain, tagline, category, badge, stats, githubRepo
@@ -24,7 +27,7 @@ export interface SiteInfo {
   readonly tagline: string;
   readonly shortDesc: string;
   readonly category: string;
-  readonly badge?: "flagship" | "research" | "applied" | "companion" | "personal";
+  readonly badge?: "research" | "flagship" | "applied" | "companion" | "personal";
   readonly githubRepo?: string;
   readonly stats?: readonly { value: string; label: string }[];
   readonly cta?: string;
@@ -203,7 +206,8 @@ export const AUTHOR = {
 } as const;
 
 // Flat list for JSON-LD Person/Organization `sameAs` — every canonical URL
-// where this identity shows up.
+// where this identity shows up. Written as references so a URL cannot drift
+// away from the SITES entry it belongs to.
 export const SAME_AS: readonly string[] = [
   SITES.barisgunaydin.url,
   SITES.kernelfusion.url,
