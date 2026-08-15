@@ -44,9 +44,12 @@ Apple-silicon laptops can out-score much bigger discrete cards on it.)
 
 ## Results
 
-890 runs across 92 unique devices and 7 GPU vendors, from macOS, Windows,
-Linux, Android and iOS across Chrome, Safari, Firefox, and Edge. Every run is
-public — browse or download at [gpubench.dev/results](https://gpubench.dev/results).
+794 runs from 119 distinct GPU/browser/OS combinations across 7 GPU vendors,
+from macOS, Windows, Linux, Android and iOS across Chrome, Safari, Firefox,
+and Edge. Both counts are a point-in-time read of a live table (2026-08-14)
+and climb as people run it; the current total is served at
+[/api/results](https://gpubench.dev/api/results). Every run is public — browse
+or download at [gpubench.dev/results](https://gpubench.dev/results).
 
 ### Transformer fusion (fused vs unfused, same device)
 
