@@ -119,8 +119,11 @@ export default function TransformerPage() {
                 layers: row.layers,
                 dModel: row.D || 0,
                 dispatches: row.dispatches,
-                // Medians, not means — means are skewed by browser stalls
-                // (see the comment on STATS in src/lib/constants.ts).
+                // Medians, not means — means are skewed by browser stalls:
+                // Safari-on-macOS produces unfused-baseline artifacts (peaks
+                // like 79,021x are real numbers but describe Safari's WebGPU
+                // stalling, not the hardware). Medians filter those without
+                // an explicit outlier rule and stay stable as the DB grows.
                 unfusedMs: row.unfused.median_ms,
                 unfusedBatchedMs: row.unfusedBatched?.median_ms ?? null,
                 fused1tMs: row.fused?.median_ms ?? null,

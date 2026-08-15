@@ -37,32 +37,3 @@ export const LINKS = {
   neuropulseSite: SITES.neuropulse.url,
   neuropulseRepo: SITES.neuropulse.githubRepo!,
 } as const;
-
-export const STATS = {
-  // Paper numbers (2 machines: M2 Pro, T4)
-  webgpuOverPytorch: "159",
-  cudaOverPytorch: "720",
-  jaxOverPytorch: "172",
-  tritonOverPytorch: "27",
-  browserOverhead: "1.92",
-  fusionAblation: "2.18",
-  // Real-world numbers — medians from gpubench DB snapshot 2026-05-04.
-  // Means are not used because Safari-on-macOS produces measurement
-  // artifacts on the unfused baseline (peaks like 79,021× are real
-  // numbers but describe Safari's WebGPU stalling, not Apple Silicon
-  // performance). Medians filter those out cleanly without an explicit
-  // outlier rule, and stay stable as the DB grows.
-  // Dataset size is deliberately not restated here — it moves every time
-  // someone runs the benchmark. sites-shared/facts.json holds the counts
-  // (gpubench.total_runs, gpubench.unique_devices) with their queries.
-  appleMedianSpeedup: "71",
-  adrenoMedianSpeedup: "20",
-  nvidiaMedianSpeedup: "56",
-  armMedianSpeedup: "55",
-  applePeakSpeedup: "226",
-  nvidiaPeakSpeedup: "402",
-  adrenoPeakSpeedup: "103",
-  vendorCount: "7",
-  mobileTokensPerSecAvg: "15000",
-  mobileTokensPerSecPeak: "213000",
-} as const;
