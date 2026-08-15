@@ -2,8 +2,9 @@
 // sites.ts — cross-project links & metadata. GENERATED. DO NOT EDIT.
 //
 // Written by sites-shared/bin/sync.mjs from sites-shared/generated/sites.json,
-// which build-sites.mjs renders from facts.json. Every number below traces to
-// a fact id there. To change anything, edit the authority and resync:
+// which build-sites.mjs renders from facts.json. Every stat VALUE traces to a
+// fact id there; prose and labels are swept for untraced numbers at build time
+// and by the estate checkers. To change anything, edit the authority and resync:
 //
 //   cd ~/dev/sites-shared && node bin/build-sites.mjs && node bin/sync.mjs
 //
@@ -117,7 +118,7 @@ export const SITES = {
     badge: "applied",
     githubRepo: "https://github.com/abgnydn/neuropulse",
     stats: [
-      { value: "Phi-3-mini", label: "3.8B params, rendered live" },
+      { value: "Phi-3-mini", label: "params rendered live" },
       { value: "every tensor", label: "rendered 1:1" },
       { value: "offline", label: "zero server calls" },
     ],
@@ -164,7 +165,7 @@ export const SITES = {
     name: "fused-lora",
     tagline: "LoRA fine-tuning of BitNet b1.58 2B4T, live in a browser tab.",
     shortDesc:
-      "First public demo of fine-tuning a ternary LLM entirely in the browser via WebGPU. ~86 ms/step on M-series laptops. Adapters emit as 4 MB .flora files. Includes a Phi-3 LoRA reference.",
+      "First public demo of fine-tuning a ternary LLM entirely in the browser via WebGPU. Adapters emit as compact .flora files. Includes a Phi-3 LoRA reference.",
     category: "LLM training",
     badge: "research",
     githubRepo: "https://github.com/abgnydn/fused-lora",
