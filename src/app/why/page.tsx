@@ -99,8 +99,8 @@ export default function WhyPage() {
           </p>
           <div className="grid grid-cols-3 gap-4">
             {[
-              { number: "71\u00D7", label: "Apple Silicon median\n119 GPU/browser/OS combinations, 7 vendors" },
-              { number: "20\u00D7", label: "Qualcomm Adreno median\nAndroid phones" },
+              { number: "one dispatch", label: "the whole sequential loop\ninstead of a chain" },
+              { number: "every vendor", label: "Apple, NVIDIA, ARM,\nIntel, AMD, Qualcomm" },
               { number: "0", label: "things to install\njust open Chrome" },
             ].map((s) => (
               <div key={s.number} className="card text-center py-8">
@@ -191,20 +191,22 @@ export default function WhyPage() {
           <h2 className="text-2xl font-bold mb-6">The result that surprised us</h2>
           <div className="border-l-2 border-bench-accent/30 pl-6 py-2 mb-6">
             <p className="text-lg text-bench-muted italic leading-relaxed">
-              The paper measured 159&ndash;720&times; on two machines.
-              Then 119 distinct GPU/browser/OS combinations ran it across 7 GPU vendors, and the median typical experience held above 20&times; on every vendor.
+              The papers measured it on two machines. Then 119 distinct GPU/browser/OS combinations ran it across
+              7 GPU vendors, and the mechanism held on every one of them.
             </p>
           </div>
           <p className="text-sm text-bench-muted leading-relaxed mb-4">
-            In the paper, we tested across four GPU APIs on two hardware platforms. On a Tesla T4:
-            hand-fused CUDA 720&times;, JAX lax.scan 172&times;, Triton 27&times;. On an M2 Pro:
-            WebGPU 159&times; over PyTorch MPS. The pattern was consistent: fusion eliminates dispatch overhead.
+            In the paper, we tested across four GPU APIs &mdash; hand-fused CUDA, JAX lax.scan, Triton and WebGPU
+            &mdash; on two hardware platforms, a Tesla T4 and an M2 Pro. The pattern was consistent: fusion
+            eliminates dispatch overhead. The ratios themselves are in the preprint, which is where a
+            re-measurement updates them.
           </p>
           <p className="text-sm text-bench-muted leading-relaxed">
-            Since publishing, 119 distinct GPU/browser/OS combinations across 7 GPU vendors have confirmed the mechanism. Median speedup vs
-            unfused dispatch: 71&times; on Apple Silicon, 56&times; on NVIDIA, 20&times; on Qualcomm Adreno (Android phones),
-            55&times; on ARM Mali, 43&times; on Intel, 40&times; on AMD. Peak observed (excluding Safari measurement
-            artifacts on the unfused baseline): 402&times; NVIDIA, 226&times; Apple, 103&times; Qualcomm.
+            Since publishing, 119 distinct GPU/browser/OS combinations across 7 GPU vendors have confirmed the
+            mechanism &mdash; Apple Silicon, NVIDIA, Qualcomm Adreno, ARM Mali, Intel and AMD. Per-vendor medians
+            are computed from the runs themselves and shown in the results table, not restated here, so they
+            cannot drift away from the data. Peaks are reported there too, with the Safari measurement
+            artifacts on the unfused baseline excluded.
           </p>
         </section>
 
@@ -214,7 +216,8 @@ export default function WhyPage() {
           <div className="space-y-4 text-sm text-bench-muted leading-relaxed">
             <p>
               The papers measured on 2 machines: an Apple M2 Pro laptop and a Tesla T4 server. Both are fast GPUs
-              with efficient command dispatching. That&apos;s why the speedups were &ldquo;only&rdquo; 159&ndash;720&times;.
+              with efficient command dispatching, which is the hardest case for this technique &mdash; the speedups
+              there are the smallest ones the papers report.
             </p>
             <p>
               Real-world devices include phones, tablets, Chromebooks, and laptops with integrated GPUs &mdash; hardware
@@ -222,9 +225,9 @@ export default function WhyPage() {
             </p>
             <p>
               Kernel fusion eliminates dispatch overhead. The worse a device is at dispatching, the more it benefits in relative terms.
-              NVIDIA desktop GPUs (good dispatching, lots of compute per dispatch) see a median 56&times;. Apple Silicon laptops see ~71&times;
-              and ARM Mali consumer GPUs see ~55&times;. Qualcomm Adreno phones see ~20&times; &mdash; smaller in relative terms because absolute
-              throughput is lower, but still an order-of-magnitude improvement.
+              NVIDIA desktop GPUs have good dispatching and a lot of compute per dispatch, so they gain least; Apple Silicon laptops
+              and ARM Mali consumer GPUs gain more; Qualcomm Adreno phones gain most in relative terms, because their absolute
+              throughput is lowest. Per-vendor medians are in the results table, computed from the runs themselves.
               <strong className="text-bench-text"> The mechanism is hardware-agnostic; the magnitude depends on each device&apos;s dispatch-overhead fraction.</strong>
             </p>
           </div>

@@ -400,7 +400,7 @@ export default function HomePage() {
 
         <PaperCard
           title="Single-Kernel Fusion for Sequential Fitness Evaluation via WebGPU Compute Shaders"
-          description="Cross-vendor medians, fused vs unfused on the same device: 71× Apple Silicon, 56× NVIDIA, 20× phones (119 distinct GPU/browser/OS combinations, 7 vendors). Controlled M2 Pro vs PyTorch MPS in the paper: 159× WebGPU, 720× CUDA on T4."
+          description="Fusing a sequential fitness loop into one WebGPU dispatch, measured against PyTorch, JAX/XLA and Triton on an M2 Pro and a Tesla T4. Cross-vendor medians from this site's own runs are in the results table; the controlled figures are in the preprint."
           doi={LINKS.ecDoi}
           doiLabel={LINKS.ecDoiShort}
         />
