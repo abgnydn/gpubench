@@ -76,10 +76,14 @@ ad-hoc outlier rule):
 
 This benchmark site demonstrates kernel fusion — fusing sequential GPU dispatches into one:
 
-- **159×** over PyTorch MPS (same M2 Pro GPU)
-- **720×** over PyTorch CUDA (same Tesla T4 GPU)
-- Confirmed across **4 GPU APIs**: CUDA, WebGPU, JAX/XLA, Triton
-- Preprint: [doi.org/10.5281/zenodo.19342888](https://doi.org/10.5281/zenodo.19342888)
+- A sequential fitness loop collapsed into one WebGPU dispatch, removing the
+  per-step kernel launch overhead
+- Confirmed across **4 GPU APIs**: CUDA, WebGPU, JAX/XLA, Triton, on an M2 Pro
+  and a Tesla T4
+- Speedup ratios are versioned in the record rather than restated here — the
+  v7 erratum re-measured them
+- Preprint: [doi.org/10.5281/zenodo.19331833](https://doi.org/10.5281/zenodo.19331833)
+  (concept DOI — always resolves to the current version)
 - Code + paper: [github.com/abgnydn/webgpu-kernel-fusion](https://github.com/abgnydn/webgpu-kernel-fusion)
 
 ## Tech Stack

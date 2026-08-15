@@ -311,7 +311,7 @@ export default function TransformerPage() {
 
         <PaperCard
           title="Single-Kernel Fusion for Autoregressive Transformer Decoding via WebGPU Compute Shaders"
-          description="Fusing the entire autoregressive decoding loop into a single GPU dispatch achieves 66–458× over unfused dispatch. The parallel kernel beats PyTorch MPS by 7.5–161× at all tested sizes."
+          description="Fusing the entire autoregressive decoding loop — attention, FFN and LayerNorm — into a single WebGPU dispatch, with single-threaded and parallel shared-memory variants cross-checked for numerical equivalence before timing. The preprint carries the measured ratios and the erratum that revised them."
           doi={LINKS.transformerDoi}
           doiLabel={LINKS.transformerDoiShort}
         />
