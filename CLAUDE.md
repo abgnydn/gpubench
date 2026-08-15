@@ -31,7 +31,8 @@ median aggregations live in JS in the routes.
   into Postgres. GET endpoints that return aggregates for the UI.
 - `src/lib/benchmark-runner.ts` — WGSL dispatch + timing logic.
 - `src/lib/gpu-detect.ts` — adapter info gathering (vendor, arch, limits).
-- `src/lib/sites.ts` — synced from `~/sites-shared/sites.ts`.
+- `src/lib/sites.ts` — a copy of `~/dev/sites-shared/generated/sites.json`.
+  Never edit in place; fix `facts.json` and rebuild in sites-shared.
 - `src/components/benchmark-card.tsx`, `results-summary.tsx`,
   `recent-runs.tsx`, `paper-card.tsx` — UI primitives.
 
@@ -61,7 +62,8 @@ Direct: `npx opennextjs-cloudflare build && npx wrangler deploy`.
 
 ## Cross-site context
 
-`src/lib/sites.ts` is synced from `~/sites-shared/sites.ts`.
+`src/lib/sites.ts` is a copy of `~/dev/sites-shared/generated/sites.json`,
+which `build-sites.mjs` renders from `facts.json`. Never edit it in place.
 
 ## Known gaps
 

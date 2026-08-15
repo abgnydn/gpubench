@@ -52,7 +52,9 @@ export const STATS = {
   // numbers but describe Safari's WebGPU stalling, not Apple Silicon
   // performance). Medians filter those out cleanly without an explicit
   // outlier rule, and stay stable as the DB grows.
-  // 92 unique devices, 7 GPU vendors, 890 total runs.
+  // Dataset size is deliberately not restated here — it moves every time
+  // someone runs the benchmark. sites-shared/facts.json holds the counts
+  // (gpubench.total_runs, gpubench.unique_devices) with their queries.
   appleMedianSpeedup: "71",
   adrenoMedianSpeedup: "20",
   nvidiaMedianSpeedup: "56",
@@ -60,8 +62,6 @@ export const STATS = {
   applePeakSpeedup: "226",
   nvidiaPeakSpeedup: "402",
   adrenoPeakSpeedup: "103",
-  totalDevices: "92",
-  totalRuns: "890",
   vendorCount: "7",
   mobileTokensPerSecAvg: "15000",
   mobileTokensPerSecPeak: "213000",

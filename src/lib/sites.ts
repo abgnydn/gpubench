@@ -1,8 +1,13 @@
 // ═══════════════════════════════════════════════════════════════════════
-// sites.ts — single source of truth for cross-project links & metadata
+// sites.ts — cross-project links & metadata. DO NOT EDIT.
 //
-// This file is distributed (copied) to every project's src/lib/sites.ts by
-// ../sync.mjs. Edit THIS file, run `node sync.mjs`, commit in each repo.
+// This is a copy of sites-shared/generated/sites.json, which build-sites.mjs
+// renders from facts.json. Every number below traces to a fact id there.
+// Hand-editing this file is how one inverted comparison reached four live
+// surfaces. To change anything: fix facts.json or sites.source.json, run
+// `node bin/build-sites.mjs` in sites-shared, then resync with
+//   cp ~/dev/sites-shared/generated/sites.json <this file's data>
+// keeping the interface and CROSSLINKS/AUTHOR/SAME_AS tail below intact.
 //
 // Schema:
 //   SITES[key]: url, domain, tagline, category, badge, stats, githubRepo
@@ -31,16 +36,16 @@ export const SITES = {
     url: "https://kernelfusion.dev",
     domain: "kernelfusion.dev",
     name: "kernelfusion.dev",
-    tagline: "Single-kernel fusion — 71× median on Apple Silicon, 56× NVIDIA, 20× phones.",
+    tagline: "Single-kernel fusion — sequential GPU dispatch chains collapsed into one dispatch.",
     shortDesc:
       "The research line. Two published preprints and one npm SDK. The theory the applied projects build on.",
     category: "Theory",
     badge: "research",
     githubRepo: "https://github.com/abgnydn/kernelfusion",
     stats: [
-      { value: "71×", label: "Apple Silicon median" },
-      { value: "56×", label: "NVIDIA median" },
-      { value: "20×", label: "phone median" },
+      { value: "DOI-archived", label: "two preprints on Zenodo" },
+      { value: "@wgpu-fusion/core", label: "npm SDK" },
+      { value: "WGSL", label: "hand-written kernels" },
     ],
     cta: "Read the research →",
   },
@@ -56,9 +61,9 @@ export const SITES = {
     badge: "flagship",
     githubRepo: "https://github.com/abgnydn/webgpu-dna",
     stats: [
-      { value: "0.988×", label: "CSDA vs Geant4-DNA" },
-      { value: "100%", label: "energy conservation" },
       { value: "71", label: "unit tests pass" },
+      { value: "Geant4-DNA", label: "physics ported" },
+      { value: "validated", label: "radiolysis vs Karamitros 2011" },
     ],
     cta: "See the simulation →",
   },
@@ -67,15 +72,15 @@ export const SITES = {
     url: "https://zerotvm.com",
     domain: "zerotvm.com",
     name: "zerotvm.com",
-    tagline: "Phi-3-mini in the browser on 50 hand-written WGSL kernels, no compiler.",
+    tagline: "Phi-3-mini in the browser on 51 hand-written WGSL kernels, no compiler.",
     shortDesc:
-      "Phi-3-mini (3.8B) running end-to-end on 50 hand-written WGSL files, replacing the 85 TVM-autotuned shaders WebLLM needs. 69.55 tok/s against WebLLM's 59.95 on identical weights in the same session, +16%.",
+      "Phi-3-mini (3.8B) running end-to-end on 51 hand-written WGSL files, replacing the 85 TVM-autotuned shaders WebLLM needs. 69.55 tok/s against WebLLM's 59.95 on identical weights in the same session, +16%.",
     category: "LLM inference",
     badge: "applied",
     githubRepo: "https://github.com/abgnydn/zero-tvm",
     stats: [
-      { value: "10", label: "kernel roles" },
-      { value: "50", label: "WGSL files" },
+      { value: "85", label: "TVM shaders replaced" },
+      { value: "51", label: "WGSL files" },
       { value: "69.55", label: "tok/s (M2 Max)" },
     ],
     cta: "Run it live →",
@@ -93,7 +98,7 @@ export const SITES = {
     githubRepo: "https://github.com/abgnydn/gpubench",
     stats: [
       { value: "794", label: "runs published" },
-      { value: "100%", label: "open data" },
+      { value: "public", label: "every run downloadable" },
     ],
     cta: "Benchmark your GPU →",
   },
@@ -102,16 +107,16 @@ export const SITES = {
     url: "https://neuropulse.live",
     domain: "neuropulse.live",
     name: "neuropulse.live",
-    tagline: "Watch a real 3.8B transformer think — every tensor rendered 1:1 from WebGPU.",
+    tagline: "Watch Phi-3-mini think — every tensor rendered live from WebGPU.",
     shortDesc:
       "A real forward pass of Phi-3-mini visualised tensor-by-tensor. 3.8 billion parameters, your GPU, your browser — every glow is a live activation read back from WebGPU. Zero server, zero API key.",
     category: "Visualization",
     badge: "applied",
     githubRepo: "https://github.com/abgnydn/neuropulse",
     stats: [
-      { value: "3.8B", label: "parameters live" },
-      { value: "1:1", label: "tensor rendering" },
-      { value: "0", label: "server calls" },
+      { value: "Phi-3-mini", label: "3.8B params, rendered live" },
+      { value: "every tensor", label: "rendered 1:1" },
+      { value: "offline", label: "zero server calls" },
     ],
     cta: "Watch it think →",
   },
@@ -131,9 +136,8 @@ export const SITES = {
     url: "https://markview.ai",
     domain: "markview.ai",
     name: "markview.ai",
-    tagline: "Markdown viewer.",
-    shortDesc:
-      "A small utility for rendering markdown files in the browser. One of the earlier experiments that became kernel-fusion.",
+    tagline: "Markdown editor.",
+    shortDesc: "Markdown editor and desktop app.",
     category: "Utility",
     githubRepo: "https://github.com/abgnydn/markview",
     cta: "Open →",

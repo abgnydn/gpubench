@@ -99,7 +99,7 @@ export default function WhyPage() {
           </p>
           <div className="grid grid-cols-3 gap-4">
             {[
-              { number: "71\u00D7", label: "Apple Silicon median\n92 unique devices, 7 vendors" },
+              { number: "71\u00D7", label: "Apple Silicon median\n119 GPU/browser/OS combinations, 7 vendors" },
               { number: "20\u00D7", label: "Qualcomm Adreno median\nAndroid phones" },
               { number: "0", label: "things to install\njust open Chrome" },
             ].map((s) => (
@@ -192,7 +192,7 @@ export default function WhyPage() {
           <div className="border-l-2 border-bench-accent/30 pl-6 py-2 mb-6">
             <p className="text-lg text-bench-muted italic leading-relaxed">
               The paper measured 159&ndash;720&times; on two machines.
-              Then 92 unique devices ran it across 7 GPU vendors, and the median typical experience held above 20&times; on every vendor.
+              Then 119 distinct GPU/browser/OS combinations ran it across 7 GPU vendors, and the median typical experience held above 20&times; on every vendor.
             </p>
           </div>
           <p className="text-sm text-bench-muted leading-relaxed mb-4">
@@ -201,7 +201,7 @@ export default function WhyPage() {
             WebGPU 159&times; over PyTorch MPS. The pattern was consistent: fusion eliminates dispatch overhead.
           </p>
           <p className="text-sm text-bench-muted leading-relaxed">
-            Since publishing, 92 unique devices across 7 GPU vendors have confirmed the mechanism. Median speedup vs
+            Since publishing, 119 distinct GPU/browser/OS combinations across 7 GPU vendors have confirmed the mechanism. Median speedup vs
             unfused dispatch: 71&times; on Apple Silicon, 56&times; on NVIDIA, 20&times; on Qualcomm Adreno (Android phones),
             55&times; on ARM Mali, 43&times; on Intel, 40&times; on AMD. Peak observed (excluding Safari measurement
             artifacts on the unfused baseline): 402&times; NVIDIA, 226&times; Apple, 103&times; Qualcomm.
